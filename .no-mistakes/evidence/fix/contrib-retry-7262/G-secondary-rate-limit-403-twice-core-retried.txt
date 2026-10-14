@@ -1,0 +1,36 @@
+# scenario: G-secondary-rate-limit-403-twice-core-retried
+mode: direct (bin/fm-contributions.sh poll)
+fault rules (CONNECT number -> injected response): {"faults":{"1":{"status":403,"reason":"Forbidden","body":"{\"message\":\"You have exceeded a secondary rate limit. Please wait a few minutes before you try again. SENTINEL_X\",\"documentation_url\":\"https://docs.github.com/rest/overview/rate-limits-for-the-rest-api#about-secondary-rate-limits\"}"},"2":{"status":403,"reason":"Forbidden","body":"{\"message\":\"You have exceeded a secondary rate limit. Please wait a few minutes before you try again. SENTINEL_X\",\"documentation_url\":\"https://docs.github.com/rest/overview/rate-limits-for-the-rest-api#about-secondary-rate-limits\"}"}}}
+extra env:  
+record before: {"checked_at":"2026-10-14T18:42:26Z","error":null}
+
+## poll exit=0 elapsed=0s
+## poll stdout (what the watcher surfaces as a wake):
+contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7299
+
+## record after:
+{
+  "url": "https://github.com/kunchenguid/firstmate/pull/7299",
+  "checked_at": "2026-10-14T18:43:53Z",
+  "error": "forge observation unavailable: core read: HTTP 403",
+  "head": "c7379f9f3c15415259ae49d0c07eaf49013326ba",
+  "state": "open"
+}
+
+## wake-queue entries added: 0
+
+## real gh invocations (argv, exit status, stderr) via log-only passthrough:
+start: api repos/kunchenguid/firstmate/pulls/7299
+end: api repos/kunchenguid/firstmate/pulls/7299
+rc: 1
+stderr: gh: You have exceeded a secondary rate limit. Please wait a few minutes before you try again. SENTINEL_X (HTTP 403)
+start: api repos/kunchenguid/firstmate/pulls/7299
+end: api repos/kunchenguid/firstmate/pulls/7299
+rc: 1
+stderr: gh: You have exceeded a secondary rate limit. Please wait a few minutes before you try again. SENTINEL_X (HTTP 403)
+
+## proxy connections:
+conn#1 intercept GET /repos/kunchenguid/firstmate/pulls/7299 -> 403 Forbidden
+conn#2 intercept GET /repos/kunchenguid/firstmate/pulls/7299 -> 403 Forbidden
+
+## grep -r SENTINEL lab home: no match

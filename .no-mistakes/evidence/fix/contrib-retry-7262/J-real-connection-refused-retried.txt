@@ -1,0 +1,35 @@
+# scenario: J-real-connection-refused-retried
+mode: direct (bin/fm-contributions.sh poll)
+fault rules (CONNECT number -> injected response): {"faults":{}}
+extra env: HTTPS_PROXY=http://127.0.0.1:1 
+record before: {"checked_at":"2026-10-14T18:42:26Z","error":null}
+
+## poll exit=0 elapsed=1s
+## poll stdout (what the watcher surfaces as a wake):
+contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7299
+
+## record after:
+{
+  "url": "https://github.com/kunchenguid/firstmate/pull/7299",
+  "checked_at": "2026-10-14T18:44:07Z",
+  "error": "forge observation unavailable: core read: connection error",
+  "head": "c7379f9f3c15415259ae49d0c07eaf49013326ba",
+  "state": "open"
+}
+
+## wake-queue entries added: 0
+
+## real gh invocations (argv, exit status, stderr) via log-only passthrough:
+start: api repos/kunchenguid/firstmate/pulls/7299
+end: api repos/kunchenguid/firstmate/pulls/7299
+rc: 1
+stderr: Get "https://api.github.com/repos/kunchenguid/firstmate/pulls/7299": proxyconnect tcp: dial tcp 127.0.0.1:1: connect: connection refused
+start: api repos/kunchenguid/firstmate/pulls/7299
+end: api repos/kunchenguid/firstmate/pulls/7299
+rc: 1
+stderr: Get "https://api.github.com/repos/kunchenguid/firstmate/pulls/7299": proxyconnect tcp: dial tcp 127.0.0.1:1: connect: connection refused
+
+## proxy connections:
+<proxy unused>
+
+## grep -r SENTINEL lab home: no match

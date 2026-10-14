@@ -1,0 +1,37 @@
+# scenario: L-real-dns-failure-retried
+mode: direct (bin/fm-contributions.sh poll)
+fault rules (CONNECT number -> injected response): {"faults":{}}
+extra env: HTTPS_PROXY=http://no-such-proxy-f38.invalid:8080 
+record before: {"checked_at":"2026-10-14T18:42:26Z","error":null}
+
+## poll exit=0 elapsed=1s
+## poll stdout (what the watcher surfaces as a wake):
+contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7299
+
+## record after:
+{
+  "url": "https://github.com/kunchenguid/firstmate/pull/7299",
+  "checked_at": "2026-10-14T18:44:08Z",
+  "error": "forge observation unavailable: core read: DNS error",
+  "head": "c7379f9f3c15415259ae49d0c07eaf49013326ba",
+  "state": "open"
+}
+
+## wake-queue entries added: 0
+
+## real gh invocations (argv, exit status, stderr) via log-only passthrough:
+start: api repos/kunchenguid/firstmate/pulls/7299
+end: api repos/kunchenguid/firstmate/pulls/7299
+rc: 1
+stderr: error connecting to no-such-proxy-f38.invalid
+stderr: check your internet connection or https://githubstatus.com
+start: api repos/kunchenguid/firstmate/pulls/7299
+end: api repos/kunchenguid/firstmate/pulls/7299
+rc: 1
+stderr: error connecting to no-such-proxy-f38.invalid
+stderr: check your internet connection or https://githubstatus.com
+
+## proxy connections:
+<proxy unused>
+
+## grep -r SENTINEL lab home: no match

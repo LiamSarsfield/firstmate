@@ -1,0 +1,63 @@
+# scenario: B-http502-html-once-closing-retried-silently
+mode: direct (bin/fm-contributions.sh poll)
+fault rules (CONNECT number -> injected response): {"faults":{"8":{"status":502,"reason":"Bad Gateway","content_type":"text/html","body":"<html><body><h1>502 Bad Gateway SENTINEL_X</h1></body></html>"}}}
+extra env:  
+record before: {"checked_at":"2026-10-14T18:42:26Z","error":null}
+
+## poll exit=0 elapsed=3s
+## poll stdout (what the watcher surfaces as a wake):
+<empty>
+
+## record after:
+{
+  "url": "https://github.com/kunchenguid/firstmate/pull/7299",
+  "checked_at": "2026-10-14T18:43:28Z",
+  "error": null,
+  "head": "c7379f9f3c15415259ae49d0c07eaf49013326ba",
+  "state": "open"
+}
+
+## wake-queue entries added: 0
+
+## real gh invocations (argv, exit status, stderr) via log-only passthrough:
+start: api repos/kunchenguid/firstmate/pulls/7299
+end: api repos/kunchenguid/firstmate/pulls/7299
+rc: 0
+start: api repos/kunchenguid/firstmate/issues/7299/comments?per_page=100
+start: api repos/kunchenguid/firstmate/commits/c7379f9f3c15415259ae49d0c07eaf49013326ba/check-runs?filter=all&per_page=100
+start: api repos/kunchenguid/firstmate/pulls/7299/reviews?per_page=100
+start: api repos/kunchenguid/firstmate/pulls/7299/comments?per_page=100
+start: api repos/kunchenguid/firstmate
+start: api repos/kunchenguid/firstmate/commits/c7379f9f3c15415259ae49d0c07eaf49013326ba/statuses?per_page=100
+end: api repos/kunchenguid/firstmate/pulls/7299/comments?per_page=100
+rc: 0
+end: api repos/kunchenguid/firstmate/commits/c7379f9f3c15415259ae49d0c07eaf49013326ba/statuses?per_page=100
+rc: 0
+end: api repos/kunchenguid/firstmate/issues/7299/comments?per_page=100
+rc: 0
+end: api repos/kunchenguid/firstmate/pulls/7299/reviews?per_page=100
+rc: 0
+end: api repos/kunchenguid/firstmate
+rc: 0
+end: api repos/kunchenguid/firstmate/commits/c7379f9f3c15415259ae49d0c07eaf49013326ba/check-runs?filter=all&per_page=100
+rc: 0
+start: pr view https://github.com/kunchenguid/firstmate/pull/7299 --json headRefOid,reviewDecision
+end: pr view https://github.com/kunchenguid/firstmate/pull/7299 --json headRefOid,reviewDecision
+rc: 1
+stderr: HTTP 502: 502 Bad Gateway (https://api.github.com/graphql)
+start: pr view https://github.com/kunchenguid/firstmate/pull/7299 --json headRefOid,reviewDecision
+end: pr view https://github.com/kunchenguid/firstmate/pull/7299 --json headRefOid,reviewDecision
+rc: 0
+
+## proxy connections:
+conn#1 tunnel api.github.com:443
+conn#5 tunnel api.github.com:443
+conn#6 tunnel api.github.com:443
+conn#3 tunnel api.github.com:443
+conn#4 tunnel api.github.com:443
+conn#7 tunnel api.github.com:443
+conn#2 tunnel api.github.com:443
+conn#8 intercept POST /graphql -> 502 Bad Gateway
+conn#9 tunnel api.github.com:443
+
+## grep -r SENTINEL lab home: no match

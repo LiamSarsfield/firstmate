@@ -1,0 +1,36 @@
+# scenario: F-http429-twice-core-retried-then-reported
+mode: direct (bin/fm-contributions.sh poll)
+fault rules (CONNECT number -> injected response): {"faults":{"1":{"status":429,"reason":"Too Many Requests","body":"{\"message\":\"API rate limit exceeded SENTINEL_X\"}"},"2":{"status":429,"reason":"Too Many Requests","body":"{\"message\":\"API rate limit exceeded SENTINEL_X\"}"}}}
+extra env:  
+record before: {"checked_at":"2026-10-14T18:42:26Z","error":null}
+
+## poll exit=0 elapsed=0s
+## poll stdout (what the watcher surfaces as a wake):
+contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7299
+
+## record after:
+{
+  "url": "https://github.com/kunchenguid/firstmate/pull/7299",
+  "checked_at": "2026-10-14T18:43:52Z",
+  "error": "forge observation unavailable: core read: HTTP 429",
+  "head": "c7379f9f3c15415259ae49d0c07eaf49013326ba",
+  "state": "open"
+}
+
+## wake-queue entries added: 0
+
+## real gh invocations (argv, exit status, stderr) via log-only passthrough:
+start: api repos/kunchenguid/firstmate/pulls/7299
+end: api repos/kunchenguid/firstmate/pulls/7299
+rc: 1
+stderr: gh: API rate limit exceeded SENTINEL_X (HTTP 429)
+start: api repos/kunchenguid/firstmate/pulls/7299
+end: api repos/kunchenguid/firstmate/pulls/7299
+rc: 1
+stderr: gh: API rate limit exceeded SENTINEL_X (HTTP 429)
+
+## proxy connections:
+conn#1 intercept GET /repos/kunchenguid/firstmate/pulls/7299 -> 429 Too Many Requests
+conn#2 intercept GET /repos/kunchenguid/firstmate/pulls/7299 -> 429 Too Many Requests
+
+## grep -r SENTINEL lab home: no match

@@ -1,0 +1,31 @@
+# scenario: I-real-github-404-not-retried
+mode: direct (bin/fm-contributions.sh poll)
+fault rules (CONNECT number -> injected response): {"faults":{}}
+extra env:  
+record before: none
+
+## poll exit=0 elapsed=0s
+## poll stdout (what the watcher surfaces as a wake):
+contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/99999999
+
+## record after:
+{
+  "url": "https://github.com/kunchenguid/firstmate/pull/99999999",
+  "checked_at": "2026-10-14T18:44:07Z",
+  "error": "forge observation unavailable: core read: HTTP 404",
+  "head": null,
+  "state": null
+}
+
+## wake-queue entries added: 0
+
+## real gh invocations (argv, exit status, stderr) via log-only passthrough:
+start: api repos/kunchenguid/firstmate/pulls/99999999
+end: api repos/kunchenguid/firstmate/pulls/99999999
+rc: 1
+stderr: gh: Not Found (HTTP 404)
+
+## proxy connections:
+conn#1 tunnel api.github.com:443
+
+## grep -r SENTINEL lab home: no match

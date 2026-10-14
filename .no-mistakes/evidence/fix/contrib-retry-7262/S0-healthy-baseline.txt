@@ -1,0 +1,54 @@
+# scenario: S0-healthy-baseline
+mode: direct (bin/fm-contributions.sh poll), proxy with no faults (all connections blind-tunnelled to real GitHub)
+PR: https://github.com/kunchenguid/firstmate/pull/7299 (state open at test time)
+
+## real gh invocations:
+start: api repos/kunchenguid/firstmate/pulls/7299
+end: api repos/kunchenguid/firstmate/pulls/7299
+rc: 0
+start: api repos/kunchenguid/firstmate/issues/7299/comments?per_page=100
+start: api repos/kunchenguid/firstmate/pulls/7299/reviews?per_page=100
+start: api repos/kunchenguid/firstmate/commits/c7379f9f3c15415259ae49d0c07eaf49013326ba/statuses?per_page=100
+start: api repos/kunchenguid/firstmate
+start: api repos/kunchenguid/firstmate/commits/c7379f9f3c15415259ae49d0c07eaf49013326ba/check-runs?filter=all&per_page=100
+start: api repos/kunchenguid/firstmate/pulls/7299/comments?per_page=100
+end: api repos/kunchenguid/firstmate/commits/c7379f9f3c15415259ae49d0c07eaf49013326ba/statuses?per_page=100
+rc: 0
+end: api repos/kunchenguid/firstmate/pulls/7299/comments?per_page=100
+rc: 0
+end: api repos/kunchenguid/firstmate/issues/7299/comments?per_page=100
+rc: 0
+end: api repos/kunchenguid/firstmate/pulls/7299/reviews?per_page=100
+rc: 0
+end: api repos/kunchenguid/firstmate
+rc: 0
+end: api repos/kunchenguid/firstmate/commits/c7379f9f3c15415259ae49d0c07eaf49013326ba/check-runs?filter=all&per_page=100
+rc: 0
+start: pr view https://github.com/kunchenguid/firstmate/pull/7299 --json headRefOid,reviewDecision
+end: pr view https://github.com/kunchenguid/firstmate/pull/7299 --json headRefOid,reviewDecision
+rc: 0
+
+## proxy connections:
+conn#1 tunnel api.github.com:443
+conn#3 tunnel api.github.com:443
+conn#4 tunnel api.github.com:443
+conn#2 tunnel api.github.com:443
+conn#6 tunnel api.github.com:443
+conn#7 tunnel api.github.com:443
+conn#5 tunnel api.github.com:443
+conn#8 tunnel api.github.com:443
+
+## record after:
+{
+  "url": "https://github.com/kunchenguid/firstmate/pull/7299",
+  "checked_at": "2026-10-14T18:42:26Z",
+  "error": null,
+  "head": "c7379f9f3c15415259ae49d0c07eaf49013326ba",
+  "state": "open",
+  "checks": 19,
+  "notified": [
+    "comment:6175282836:2026-10-14T18:20:51Z:"
+  ]
+}
+
+## poll stdout: one contribution-wake line for the real maintainer comment already on the PR (expected first-observation signal; no unavailable line)

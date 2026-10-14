@@ -1,0 +1,37 @@
+# scenario: C1-http500-twice-core-via-watcher-shim
+NOTE: the unavailable wake is the poll stdout line below; fm-watch.sh check sweep turns any non-signal stdout line from contributions.check.sh into a "check: <path>: <line>" wake reason. Only contribution signals (comments/reviews) are appended to state/.wake-queue, so "wake-queue entries added: 0" is expected for an unavailable wake.
+mode: shim (armed state/contributions.check.sh, timeout 30, stderr to /dev/null like fm-watch.sh run_check)
+fault rules (CONNECT number -> injected response): {"faults":{"1":{"status":500,"reason":"Internal Server Error","body":"{\"message\":\"Internal Server Error SENTINEL_X\"}"},"2":{"status":500,"reason":"Internal Server Error","body":"{\"message\":\"Internal Server Error SENTINEL_X\"}"}}}
+extra env:  
+record before: {"checked_at":"2026-10-14T18:42:26Z","error":null}
+
+## poll exit=0 elapsed=1s
+## poll stdout (what the watcher surfaces as a wake):
+contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7299
+
+## record after:
+{
+  "url": "https://github.com/kunchenguid/firstmate/pull/7299",
+  "checked_at": "2026-10-14T18:43:31Z",
+  "error": "forge observation unavailable: core read: HTTP 500",
+  "head": "c7379f9f3c15415259ae49d0c07eaf49013326ba",
+  "state": "open"
+}
+
+## wake-queue entries added: 0
+
+## real gh invocations (argv, exit status, stderr) via log-only passthrough:
+start: api repos/kunchenguid/firstmate/pulls/7299
+end: api repos/kunchenguid/firstmate/pulls/7299
+rc: 1
+stderr: gh: Internal Server Error SENTINEL_X (HTTP 500)
+start: api repos/kunchenguid/firstmate/pulls/7299
+end: api repos/kunchenguid/firstmate/pulls/7299
+rc: 1
+stderr: gh: Internal Server Error SENTINEL_X (HTTP 500)
+
+## proxy connections:
+conn#1 intercept GET /repos/kunchenguid/firstmate/pulls/7299 -> 500 Internal Server Error
+conn#2 intercept GET /repos/kunchenguid/firstmate/pulls/7299 -> 500 Internal Server Error
+
+## grep -r SENTINEL lab home: no match

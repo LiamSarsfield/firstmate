@@ -1,0 +1,29 @@
+# scenario: O-first-attempt-hang-is-budget-refusal-not-retried
+NOTE: a first attempt killed at the 5s read bound is budget refusal (unchanged from base): it is not retried, records no error and prints no line; the record keeps its previous checked_at.
+mode: direct (bin/fm-contributions.sh poll)
+fault rules (CONNECT number -> injected response): {"faults":{"1":{"hang":true}}}
+extra env:  
+record before: {"checked_at":"2026-10-14T18:42:26Z","error":null}
+
+## poll exit=0 elapsed=5s
+## poll stdout (what the watcher surfaces as a wake):
+<empty>
+
+## record after:
+{
+  "url": "https://github.com/kunchenguid/firstmate/pull/7299",
+  "checked_at": "2026-10-14T18:42:26Z",
+  "error": null,
+  "head": "c7379f9f3c15415259ae49d0c07eaf49013326ba",
+  "state": "open"
+}
+
+## wake-queue entries added: 0
+
+## real gh invocations (argv, exit status, stderr) via log-only passthrough:
+start: api repos/kunchenguid/firstmate/pulls/7299
+
+## proxy connections:
+conn#1 intercept GET /repos/kunchenguid/firstmate/pulls/7299 -> hang
+
+## grep -r SENTINEL lab home: no match
