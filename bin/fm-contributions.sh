@@ -59,7 +59,8 @@
 # budget refusal; a killed retry retains the genuine failure that caused it.
 # HTTP 5xx, 429, secondary-rate-limit 403, connection, DNS and TLS failures are
 # retried once when that bound still has time. Other failures are reported
-# immediately. A pull observation has three
+# immediately, including a 404, which is how a lost login reads on a private
+# repository. A pull observation has three
 # dependent waves: core, six independent reads, then the closing head read;
 # an issue has two waves. Before starting a URL, poll reserves the smaller of
 # the effective budget and 15 seconds for those waves. URLs needing forge
