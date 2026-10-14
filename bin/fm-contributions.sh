@@ -54,9 +54,11 @@
 # 1..25). A configured value rides the generated check shim into watcher runs
 # and is cut down to the watcher's own per-check bound (FM_CHECK_TIMEOUT,
 # default 30, read from the poll's environment because the watcher runs it as
-# a direct child) with a three-second margin. Every read is capped at five
-# seconds, and a read killed at that bound or at the deadline is budget
-# refusal, never a forge failure. A pull observation has three
+# a direct child) with a three-second margin. Every read, including one retry,
+# is capped at five seconds, and a read killed at that bound or at the deadline
+# is budget refusal, never a forge failure. HTTP 5xx, 429, secondary-rate-limit
+# 403, connection, DNS and TLS failures are retried once when that bound still
+# has time. Other failures are reported immediately. A pull observation has three
 # dependent waves: core, six independent reads, then the closing head read;
 # an issue has two waves. Before starting a URL, poll reserves the smaller of
 # the effective budget and 15 seconds for those waves. URLs needing forge
@@ -72,8 +74,9 @@
 # mid-observation, that URL's records stay untouched and the poll moves to the
 # next URL that still has a full observation reserve; only a genuine forge
 # failure or head change records an error.
-# API failure leaves error evidence; an expired or absent observation is not
-# silence. FM_CONTRIBUTIONS_MAX_AGE (default 900 seconds) bounds freshness.
+# API failure leaves sanitized read and error evidence; raw forge stderr is
+# never persisted. An expired or absent observation is not silence.
+# FM_CONTRIBUTIONS_MAX_AGE (default 900 seconds) bounds freshness.
 # A supported URL whose last good observation is merged or closed is final: it is
 # never re-read, stays fresh, and every owner's saved row converges on that
 # observation, with a stale error beside it cleared.
@@ -219,23 +222,107 @@ write_record() { # task record-json-file
   mv -f -- "$staged" "$file"
 }
 
-forge() {
-  local remaining rc=0 forge_err=${FORGE_ERR:-$TMP/forge.err}
-  remaining=$((DEADLINE - $(date +%s)))
-  # The budget, not the forge, refused this read.
-  [ "$remaining" -gt 0 ] || { BUDGET_EXHAUSTED=1; : > "$TMP/budget-exhausted"; return 1; }
-  [ "$remaining" -le 5 ] || remaining=5
-  fm_run_timed "$remaining" env GH_PROMPT_DISABLED=1 GH_NO_UPDATE_NOTIFIER=1 \
-    gh "$@" 2> "$forge_err" || rc=$?
-  # A kill at the read bound or the deadline is budget refusal too; only the
-  # forge's own nonzero exit is unavailable evidence.
-  if [ "$rc" -eq 124 ]; then
-    BUDGET_EXHAUSTED=1
-    : > "$TMP/budget-exhausted"
-  elif [ "$rc" -ne 0 ]; then
-    : > "$TMP/forge-unavailable"
+forge_transient_error() { # stderr-file
+  local err=$1
+  grep -Eqi 'HTTP[^0-9]*(5[0-9][0-9]|429)([^0-9]|$)' "$err" && return 0
+  if grep -Eqi 'HTTP[^0-9]*403([^0-9]|$)' "$err" \
+    && grep -Eqi 'secondary[- ]rate[- ]limit' "$err"; then
+    return 0
   fi
-  return "$rc"
+  grep -Eqi 'connection (reset|refused|closed|failed|error)|could not connect|failed to connect|broken pipe|network is unreachable|dial (tcp|udp)|unexpected EOF' "$err" \
+    && return 0
+  grep -Eqi 'could not resolve|name resolution|no such host|DNS|dial (tcp|udp): lookup|lookup [^:]+:' "$err" && return 0
+  grep -Eqi 'TLS|SSL|x509|certificate (verify|signed)' "$err" && return 0
+  return 1
+}
+
+forge_error_summary() { # stderr-file
+  local err=$1 status
+  status=$(grep -Eio 'HTTP[^0-9]*[0-9][0-9][0-9]' "$err" | head -n 1 | grep -Eo '[0-9][0-9][0-9]' || true)
+  if [ -n "$status" ]; then
+    printf 'HTTP %s\n' "$status"
+  elif grep -Eqi 'could not resolve|name resolution|no such host|DNS|dial (tcp|udp): lookup|lookup [^:]+:' "$err"; then
+    printf 'DNS error\n'
+  elif grep -Eqi 'TLS|SSL|x509|certificate (verify|signed)' "$err"; then
+    printf 'TLS error\n'
+  elif grep -Eqi 'connection (reset|refused|closed|failed|error)|could not connect|failed to connect|broken pipe|network is unreachable|dial (tcp|udp)|unexpected EOF' "$err"; then
+    printf 'connection error\n'
+  else
+    printf 'request failed\n'
+  fi
+}
+
+forge_record_error() { # read-name diagnostic-file summary
+  printf 'forge observation unavailable: %s read: %s\n' "$1" "$3" > "$2"
+}
+
+forge_observation_error() {
+  local diagnostic
+  for diagnostic in "$TMP/core.err.diagnostic" "$TMP/comments.err.diagnostic" \
+    "$TMP/reviews.err.diagnostic" "$TMP/inline.err.diagnostic" \
+    "$TMP/checks.err.diagnostic" "$TMP/statuses.err.diagnostic" \
+    "$TMP/repo.err.diagnostic" "$TMP/closing.err.diagnostic" \
+    "$TMP/issue-events.err.diagnostic"; do
+    if [ -s "$diagnostic" ]; then
+      head -n 1 "$diagnostic"
+      return 0
+    fi
+  done
+  printf 'forge observation unavailable or changed during read\n'
+}
+
+forge() {
+  local remaining rc=0 attempt=1 failed_rc=0 failed_summary='' now read_deadline
+  local forge_err=${FORGE_ERR:-$TMP/forge.err} read=${FORGE_READ:-forge} out summary
+  local diagnostic="${forge_err}.diagnostic"
+  out=$(mktemp "$TMP/forge-output.XXXXXX")
+  : > "$diagnostic"
+  now=$(date +%s)
+  read_deadline=$((now + 5))
+  [ "$read_deadline" -le "$DEADLINE" ] || read_deadline=$DEADLINE
+  while :; do
+    now=$(date +%s)
+    remaining=$((read_deadline - now))
+    if [ "$remaining" -le 0 ]; then
+      if [ "$failed_rc" -ne 0 ]; then
+        forge_record_error "$read" "$diagnostic" "$failed_summary"
+        : > "$TMP/forge-unavailable"
+        return "$failed_rc"
+      fi
+      BUDGET_EXHAUSTED=1
+      : > "$TMP/budget-exhausted"
+      return 1
+    fi
+    rc=0
+    : > "$out"
+    fm_run_timed "$remaining" env GH_PROMPT_DISABLED=1 GH_NO_UPDATE_NOTIFIER=1 \
+      gh "$@" > "$out" 2> "$forge_err" || rc=$?
+    if [ "$rc" -eq 0 ]; then
+      cat "$out"
+      return 0
+    fi
+    # A kill at the read bound or the deadline is budget refusal. If the retry
+    # times out, retain the genuine forge failure that caused that retry.
+    if fm_timed_out "$rc"; then
+      if [ "$failed_rc" -ne 0 ]; then
+        forge_record_error "$read" "$diagnostic" "$failed_summary"
+        : > "$TMP/forge-unavailable"
+        return "$failed_rc"
+      fi
+      BUDGET_EXHAUSTED=1
+      : > "$TMP/budget-exhausted"
+      return "$rc"
+    fi
+    summary=$(forge_error_summary "$forge_err")
+    if [ "$attempt" -ge 2 ] || ! forge_transient_error "$forge_err"; then
+      forge_record_error "$read" "$diagnostic" "$summary"
+      : > "$TMP/forge-unavailable"
+      return "$rc"
+    fi
+    failed_rc=$rc
+    failed_summary=$summary
+    attempt=2
+  done
 }
 
 wait_forges() { # background forge pids from one independent read wave
@@ -255,26 +342,35 @@ observe() { # canonical GitHub URL -> normalized JSON
   part=${url#https://github.com/}; number=${part##*/}; part=${part%/*}; kind=${part##*/}; part=${part%/*}
   case "$kind" in pull) endpoint="repos/$part/pulls/$number" ;; issues) endpoint="repos/$part/issues/$number" ;; *) return 1 ;; esac
   rm -f -- "$TMP/budget-exhausted" "$TMP/forge-unavailable"
+  : > "$TMP/core.err.diagnostic"
+  : > "$TMP/comments.err.diagnostic"
+  : > "$TMP/reviews.err.diagnostic"
+  : > "$TMP/inline.err.diagnostic"
+  : > "$TMP/checks.err.diagnostic"
+  : > "$TMP/statuses.err.diagnostic"
+  : > "$TMP/repo.err.diagnostic"
+  : > "$TMP/closing.err.diagnostic"
+  : > "$TMP/issue-events.err.diagnostic"
   BUDGET_EXHAUSTED=0
-  forge api "$endpoint" > "$TMP/core.json" || return 1
+  FORGE_READ=core FORGE_ERR="$TMP/core.err" forge api "$endpoint" > "$TMP/core.json" || return 1
   jq -e '(.state == "open" or .state == "closed") and (.user.login | type == "string")' "$TMP/core.json" >/dev/null || return 1
   if [ "$kind" = pull ]; then
     head=$(jq -er '.head.sha | select(test("^[a-fA-F0-9]{40}$"))' "$TMP/core.json") || return 1
-    FORGE_ERR="$TMP/comments.err" forge api "repos/$part/issues/$number/comments?per_page=100" --paginate --slurp > "$TMP/comments.json" &
+    FORGE_READ=comments FORGE_ERR="$TMP/comments.err" forge api "repos/$part/issues/$number/comments?per_page=100" --paginate --slurp > "$TMP/comments.json" &
     local comments_pid=$!
-    FORGE_ERR="$TMP/reviews.err" forge api "$endpoint/reviews?per_page=100" --paginate --slurp > "$TMP/reviews.json" &
+    FORGE_READ=reviews FORGE_ERR="$TMP/reviews.err" forge api "$endpoint/reviews?per_page=100" --paginate --slurp > "$TMP/reviews.json" &
     local reviews_pid=$!
-    FORGE_ERR="$TMP/inline.err" forge api "$endpoint/comments?per_page=100" --paginate --slurp > "$TMP/inline.json" &
+    FORGE_READ=inline FORGE_ERR="$TMP/inline.err" forge api "$endpoint/comments?per_page=100" --paginate --slurp > "$TMP/inline.json" &
     local inline_pid=$!
-    FORGE_ERR="$TMP/checks.err" forge api "repos/$part/commits/$head/check-runs?filter=all&per_page=100" --paginate --slurp > "$TMP/checks.json" &
+    FORGE_READ=checks FORGE_ERR="$TMP/checks.err" forge api "repos/$part/commits/$head/check-runs?filter=all&per_page=100" --paginate --slurp > "$TMP/checks.json" &
     local checks_pid=$!
-    FORGE_ERR="$TMP/statuses.err" forge api "repos/$part/commits/$head/statuses?per_page=100" --paginate --slurp > "$TMP/statuses.json" &
+    FORGE_READ=statuses FORGE_ERR="$TMP/statuses.err" forge api "repos/$part/commits/$head/statuses?per_page=100" --paginate --slurp > "$TMP/statuses.json" &
     local statuses_pid=$!
-    FORGE_ERR="$TMP/repo.err" forge api "repos/$part" > "$TMP/repo.json" &
+    FORGE_READ=repository FORGE_ERR="$TMP/repo.err" forge api "repos/$part" > "$TMP/repo.json" &
     local repo_pid=$!
     wait_forges "$comments_pid" "$reviews_pid" "$inline_pid" "$checks_pid" "$statuses_pid" "$repo_pid" || return 1
     jq -e 'type == "array" and all(.[]; type == "array")' "$TMP/comments.json" >/dev/null || return 1
-    forge pr view "$url" --json headRefOid,reviewDecision > "$TMP/after.json" || return 1
+    FORGE_READ=closing FORGE_ERR="$TMP/closing.err" forge pr view "$url" --json headRefOid,reviewDecision > "$TMP/after.json" || return 1
     after=$(jq -er .headRefOid "$TMP/after.json")
     [ "$head" = "$after" ] || { printf 'head changed during observation\n' > "$TMP/forge.err"; return 1; }
     jq -n --slurpfile core "$TMP/core.json" --slurpfile comments "$TMP/comments.json" \
@@ -298,9 +394,9 @@ observe() { # canonical GitHub URL -> normalized JSON
                  author:.user.login,body:(.body // "" | .[:500])}))}' > "$TMP/observation.json" || return 1
   else
     label=${FM_CONTRIBUTIONS_READY_LABEL:-ready-for-pr}
-    FORGE_ERR="$TMP/comments.err" forge api "repos/$part/issues/$number/comments?per_page=100" --paginate --slurp > "$TMP/comments.json" &
+    FORGE_READ=comments FORGE_ERR="$TMP/comments.err" forge api "repos/$part/issues/$number/comments?per_page=100" --paginate --slurp > "$TMP/comments.json" &
     local comments_pid=$!
-    FORGE_ERR="$TMP/issue-events.err" forge api "repos/$part/issues/$number/events?per_page=100" --paginate --slurp > "$TMP/issue-events.json" &
+    FORGE_READ=issue-events FORGE_ERR="$TMP/issue-events.err" forge api "repos/$part/issues/$number/events?per_page=100" --paginate --slurp > "$TMP/issue-events.json" &
     local events_pid=$!
     wait_forges "$comments_pid" "$events_pid" || return 1
     jq -e 'type == "array" and all(.[]; type == "array")' "$TMP/comments.json" >/dev/null || return 1
@@ -441,7 +537,7 @@ poll() {
             seen:($events | map(.token)),
             pending:(($old.pending // []) + [$events[] | select(.token as $t | ($old.seen // [] | index($t)) == null)] | unique_by(.token))}' > "$TMP/row.json"
       else
-        error='forge observation unavailable or changed during read'
+        error=$(forge_observation_error)
         jq --arg now "$NOW" --arg error "$error" '.checked_at=$now | .error=$error' "$old" > "$TMP/row.json"
       fi
       write_record "$task" "$TMP/row.json"

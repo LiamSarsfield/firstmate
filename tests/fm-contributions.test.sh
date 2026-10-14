@@ -496,7 +496,8 @@ test_legacy_cleanup_preserves_supported_failure() {
     || fail "mixed legacy-error poll failed: $out"
   [ -z "$out" ] || fail "an existing GitHub failure episode re-alerted: $out"
   grep -Fxq 'api repos/o/r/pulls/8' "$home/forge/calls" || fail 'supported ownership was not retried'
-  [ "$(wc -l < "$home/forge/calls")" -eq 1 ] || fail 'unsupported mixed records triggered forge reads'
+  # The transient 502 core read is retried once; unsupported records add no reads.
+  [ "$(wc -l < "$home/forge/calls")" -eq 2 ] || fail 'unsupported mixed records triggered forge reads'
   [ ! -s "$home/state/.wake-queue" ] || fail 'mixed legacy cleanup enqueued a wake'
   jq -e --slurpfile expected "$home/unsupported.expected.json" '.records | length == 4
     and all(.[]; .observation == null)
@@ -750,7 +751,17 @@ case "$fault:$*" in
   slow-wave:'api repos/o/r/pulls/8/reviews?'*) sleep 6 ;;
   exhaust:'api repos/o/r/issues/8/comments?'*) clock_bump 100 ;;
   fail-late:'api repos/o/r/pulls/8/reviews?'*) clock_bump 100; printf 'HTTP 502\n' >&2; exit 1 ;;
-  fail:'api repos/o/r/pulls/8/reviews?'*) printf 'HTTP 502\n' >&2; exit 1 ;;
+  fail:'api repos/o/r/pulls/8/reviews?'*)
+    printf 'Authorization: PRIVATE_HEADER_SENTINEL\nPRIVATE_RESPONSE_SENTINEL\nHTTP 502\n' >&2
+    exit 1
+    ;;
+  fail-once:'api repos/o/r/pulls/8/reviews?'*)
+    if [ ! -e "$FORGE/fail-once-spent" ]; then
+      : > "$FORGE/fail-once-spent"
+      printf 'HTTP 500\n' >&2
+      exit 1
+    fi
+    ;;
   down:*) printf 'HTTP 502\n' >&2; exit 1 ;;
   not-found:'api repos/o/r/'*) printf 'HTTP 404\n' >&2; exit 1 ;;
   hang:'api repos/o/r/pulls/8') sleep 4 ;;
@@ -803,9 +814,67 @@ test_genuine_failure_near_deadline_is_unavailable() {
   [ "$out" = 'contributions: observation unavailable for https://github.com/o/r/pull/8' ] \
     || fail "a genuine forge failure past the deadline was swallowed: $out"
   jq -e --arg now "$NOW" '.records[0].checked_at == $now
-    and .records[0].error == "forge observation unavailable or changed during read"' \
+    and .records[0].error == "forge observation unavailable: reviews read: HTTP 502"' \
     "$home/data/delivery/contributions.json" >/dev/null || fail 'a genuine forge failure left no error evidence'
   pass 'a genuine forge failure inside the budget still records the error and wakes'
+}
+
+test_http_500_once_retries_without_waking() {
+  local home out calls
+  home=$(new_home retry-http-500-once)
+  forge_home "$home"
+  wrap_forge "$home"
+  mutate_record "$home" delivery '.records[0].checked_at="2026-09-15T08:00:00Z"'
+  printf 'fail-once\n' > "$home/forge/fault"
+  out=$(with_home "$home" "$ROOT/bin/fm-contributions.sh" poll) \
+    || fail 'poll failed after one transient HTTP 500'
+  [ -z "$out" ] || fail "a recovered HTTP 500 printed an unavailable line: $out"
+  calls=$(grep -cF 'api repos/o/r/pulls/8/reviews?' "$home/forge/calls")
+  [ "$calls" = 2 ] || fail "one HTTP 500 made $calls review reads, expected 2"
+  jq -e --arg now "$NOW" '.records[0] | .checked_at == $now and .error == null' \
+    "$home/data/delivery/contributions.json" >/dev/null \
+    || fail 'a recovered HTTP 500 left an error in the contribution record'
+  [ ! -s "$home/state/.wake-queue" ] || fail 'a recovered HTTP 500 enqueued a wake'
+  pass 'one HTTP 500 is retried once and a successful retry stays healthy'
+}
+
+test_http_500_twice_records_the_failed_read() {
+  local home out calls
+  home=$(new_home retry-http-500-twice)
+  forge_home "$home"
+  wrap_forge "$home"
+  printf 'fail\n' > "$home/forge/fault"
+  out=$(with_home "$home" "$ROOT/bin/fm-contributions.sh" poll) \
+    || fail 'poll failed after two HTTP 500 responses'
+  [ "$out" = 'contributions: observation unavailable for https://github.com/o/r/pull/8' ] \
+    || fail "two HTTP 500 responses did not print one unavailable line: $out"
+  calls=$(grep -cF 'api repos/o/r/pulls/8/reviews?' "$home/forge/calls")
+  [ "$calls" = 2 ] || fail "two HTTP 500 responses made $calls review reads, expected 2"
+  jq -e '.records[0].error == "forge observation unavailable: reviews read: HTTP 502"' \
+    "$home/data/delivery/contributions.json" >/dev/null \
+    || fail 'a failed retry did not name the reviews read and sanitized HTTP status'
+  if grep -Eq 'PRIVATE_(HEADER|RESPONSE)_SENTINEL' "$home/data/delivery/contributions.json"; then
+    fail 'a failed retry persisted a forge header or response body'
+  fi
+  pass 'two transient failures wake once and name the failed read in the record'
+}
+
+test_http_404_is_not_retried() {
+  local home out calls
+  home=$(new_home no-retry-http-404)
+  forge_home "$home"
+  wrap_forge "$home"
+  printf 'not-found\n' > "$home/forge/fault"
+  out=$(with_home "$home" "$ROOT/bin/fm-contributions.sh" poll) \
+    || fail 'poll failed after an HTTP 404'
+  [ "$out" = 'contributions: observation unavailable for https://github.com/o/r/pull/8' ] \
+    || fail "an HTTP 404 did not print one unavailable line: $out"
+  calls=$(grep -cFx 'api repos/o/r/pulls/8' "$home/forge/calls")
+  [ "$calls" = 1 ] || fail "an HTTP 404 made $calls core reads, expected 1"
+  jq -e '.records[0].error == "forge observation unavailable: core read: HTTP 404"' \
+    "$home/data/delivery/contributions.json" >/dev/null \
+    || fail 'an HTTP 404 did not name the core read and sanitized HTTP status'
+  pass 'an HTTP 404 is reported without retrying'
 }
 
 test_shared_url_observed_once() {
@@ -822,6 +891,10 @@ test_shared_url_observed_once() {
     if [ "$mode" = ok ]; then
       expected=null
       [ -z "$out" ] || fail "a healthy shared observation printed: $out"
+    elif [ "$mode" = fail ]; then
+      expected='"forge observation unavailable: reviews read: HTTP 502"'
+      [ "$out" = 'contributions: observation unavailable for https://github.com/o/r/pull/8' ] \
+        || fail "a shared unavailable observation did not wake exactly once ($mode): $out"
     else
       expected='"forge observation unavailable or changed during read"'
       [ "$out" = 'contributions: observation unavailable for https://github.com/o/r/pull/8' ] \
@@ -1148,7 +1221,7 @@ test_arm_plumbs_a_configured_budget_into_the_check_shim() {
 
 test_unavailable_forge_records_error_and_wakes_once_per_episode() { # genuine outage, two consecutive cycles
   local home out line='contributions: observation unavailable for https://github.com/o/r/pull/8'
-  local error='"forge observation unavailable or changed during read"'
+  local error='"forge observation unavailable: core read: HTTP 502"'
   home=$(new_home failure-episode)
   forge_home "$home"
   wrap_forge "$home"
@@ -1160,7 +1233,7 @@ test_unavailable_forge_records_error_and_wakes_once_per_episode() { # genuine ou
   [ -z "$out" ] || fail "an unchanged read failure woke again on the next cycle: $out"
   jq -e --argjson error "$error" '.records[0] | .checked_at == "2026-09-16T10:00:00Z" and .error == $error' \
     "$home/data/delivery/contributions.json" >/dev/null || fail 'a repeated read failure stopped recording its error'
-  [ "$(grep -cFx 'api repos/o/r/pulls/8' "$home/forge/calls")" = 2 ] || fail 'a failing open PR stopped being observed'
+  [ "$(grep -cFx 'api repos/o/r/pulls/8' "$home/forge/calls")" = 4 ] || fail 'a failing open PR stopped being observed'
   bearings "$home" | jq -e '.contributions | .known == 1 and .checked == 0
     and .unmeasured == 0 and .counts.fleet == 1 and .complete == false' >/dev/null \
     || fail 'a supported GitHub failure became unmeasured or successful coverage'
@@ -1177,7 +1250,7 @@ test_unavailable_forge_records_error_and_wakes_once_per_episode() { # genuine ou
 
 test_late_owner_keeps_failure_episode_suppressed() {
   local home out line='contributions: observation unavailable for https://github.com/o/r/pull/8'
-  local error='forge observation unavailable or changed during read' task
+  local error='forge observation unavailable: core read: HTTP 502' task
   home=$(new_home late-owner-failure-episode)
   forge_home "$home"
   wrap_forge "$home"
@@ -1286,7 +1359,7 @@ test_retire_is_idempotent_and_refuses_unknown_pairs() {
 }
 
 failures=0
-for test_name in test_actor_coverage test_stale_verdict test_unchecked_is_not_silence test_newest_check_has_no_verdict test_comment_wake test_review_wake test_inline_wake test_ready_issue_wake test_fresh_issue_requires_maintainer test_missing_lane_remains_missing test_partial_freshness_keeps_measured_rows test_malformed_record_cannot_prove_silence test_issue_timeline_and_exact_ack test_verdict_retains_judged_head test_verdict_actor_values_are_discoverable test_observed_replacement_refreshes_verdict test_unobserved_head_leaves_verdict_unknown test_away_yolo_is_fleet_work test_away_yolo_cross_home_is_fleet_work test_retired_and_unsupported_coverage test_unsupported_forge_is_not_fleet_work test_held_unsupported_forge_is_not_captain_work test_unsupported_poll_is_silent_and_clears_legacy_errors test_legacy_cleanup_preserves_supported_failure test_shared_contribution_signal_wakes_once test_watcher_keeps_diagnostics_separate_from_contribution_wakes test_expired_child_unsupported_forge_stays_unmeasured test_watcher_surfaces_new_contribution_once test_home_summary_coverage test_unreadable_pending_is_not_empty test_record_task_identity_matches_dirname_basename test_read_only_views_create_no_state test_budget_refusal_between_calls test_budget_bounded_call_timeout test_genuine_failure_near_deadline_is_unavailable test_shared_url_observed_once test_terminal_contribution_settles test_late_owner_inherits_terminal_observation test_interrupted_multi_owner_poll_settles_every_owner test_done_task_open_pr_still_observed test_reservation_defers_later_url_when_fifteen_seconds_do_not_remain test_three_second_pr_reads_complete_fresh_in_one_cycle test_slow_read_deadline_kill_is_budget_refusal test_unmeasured_url_does_not_starve_the_tail test_budget_is_cut_down_to_the_watcher_check_bound test_arm_plumbs_a_configured_budget_into_the_check_shim test_unavailable_forge_records_error_and_wakes_once_per_episode test_late_owner_keeps_failure_episode_suppressed test_retire_ends_observation_of_a_gone_contribution test_late_owner_of_a_retired_final_contribution_is_not_retired test_retire_is_idempotent_and_refuses_unknown_pairs; do
+for test_name in test_actor_coverage test_stale_verdict test_unchecked_is_not_silence test_newest_check_has_no_verdict test_comment_wake test_review_wake test_inline_wake test_ready_issue_wake test_fresh_issue_requires_maintainer test_missing_lane_remains_missing test_partial_freshness_keeps_measured_rows test_malformed_record_cannot_prove_silence test_issue_timeline_and_exact_ack test_verdict_retains_judged_head test_verdict_actor_values_are_discoverable test_observed_replacement_refreshes_verdict test_unobserved_head_leaves_verdict_unknown test_away_yolo_is_fleet_work test_away_yolo_cross_home_is_fleet_work test_retired_and_unsupported_coverage test_unsupported_forge_is_not_fleet_work test_held_unsupported_forge_is_not_captain_work test_unsupported_poll_is_silent_and_clears_legacy_errors test_legacy_cleanup_preserves_supported_failure test_shared_contribution_signal_wakes_once test_watcher_keeps_diagnostics_separate_from_contribution_wakes test_expired_child_unsupported_forge_stays_unmeasured test_watcher_surfaces_new_contribution_once test_home_summary_coverage test_unreadable_pending_is_not_empty test_record_task_identity_matches_dirname_basename test_read_only_views_create_no_state test_budget_refusal_between_calls test_budget_bounded_call_timeout test_genuine_failure_near_deadline_is_unavailable test_http_500_once_retries_without_waking test_http_500_twice_records_the_failed_read test_http_404_is_not_retried test_shared_url_observed_once test_terminal_contribution_settles test_late_owner_inherits_terminal_observation test_interrupted_multi_owner_poll_settles_every_owner test_done_task_open_pr_still_observed test_reservation_defers_later_url_when_fifteen_seconds_do_not_remain test_three_second_pr_reads_complete_fresh_in_one_cycle test_slow_read_deadline_kill_is_budget_refusal test_unmeasured_url_does_not_starve_the_tail test_budget_is_cut_down_to_the_watcher_check_bound test_arm_plumbs_a_configured_budget_into_the_check_shim test_unavailable_forge_records_error_and_wakes_once_per_episode test_late_owner_keeps_failure_episode_suppressed test_retire_ends_observation_of_a_gone_contribution test_late_owner_of_a_retired_final_contribution_is_not_retired test_retire_is_idempotent_and_refuses_unknown_pairs; do
   ( "$test_name" ) || failures=$((failures + 1))
 done
 [ "$failures" -eq 0 ] || fail "$failures contribution regressions"
