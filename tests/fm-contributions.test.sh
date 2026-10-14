@@ -963,6 +963,26 @@ test_real_gh_errors_drive_retry_and_summary() {
       || fail "HTTP $status lost its error"
   done
 
+  # Only GitHub's secondary rate limit makes a 403 transient.
+  for row in \
+    'secondary|2|gh: You have exceeded a secondary rate limit. Please wait a few minutes before you try again. (HTTP 403)' \
+    'forbidden|1|gh: Resource not accessible by integration (HTTP 403)'; do
+    IFS='|' read -r status calls message <<< "$row"
+    home=$(new_home "real-gh-http-403-$status")
+    forge_home "$home"
+    wrap_forge "$home"
+    printf 'real-core\n' > "$home/forge/fault"
+    out=$(with_home "$home" env FORGE_ERROR_TEXT="$message" "$ROOT/bin/fm-contributions.sh" poll) \
+      || fail "poll failed on a real gh $status HTTP 403 shape"
+    why="core read exited 1 with Ns of budget left: $message"
+    [ "$(printf '%s\n' "$out" | mask_budget)" = "contributions: observation unavailable for https://github.com/o/r/pull/8 - $why" ] \
+      || fail "a persistent $status HTTP 403 did not print one unavailable line: $out"
+    [ "$(grep -cFx 'api repos/o/r/pulls/8' "$home/forge/calls")" = "$calls" ] \
+      || fail "a $status HTTP 403 did not make exactly $calls core read(s)"
+    [ "$(jq -r .records[0].error "$home/data/delivery/contributions.json" | mask_budget)" = "forge observation unavailable: $why" ] \
+      || fail "a $status HTTP 403 lost its error"
+  done
+
   for status in 500 502 503 429; do
     home=$(new_home "real-gh-bare-http-$status")
     forge_home "$home"
