@@ -1,0 +1,112 @@
+=== scenario: S12 persistent TCP reset on the reviews read (connection error: retry once)
+--- injected rules: [{"match":"/pulls/7302/reviews","action":"reset","times":-1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 1.3s
+--- poll stdout (what the watcher turns into a wake):
+    contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - reviews read exited 1 with 19s of budget left: Get "https://api.github.com/repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100": read tcp 127.0.0.1:38618->127.0.0.1:39045: read: connection reset by p
+--- real gh invocations by the poll (counting shim, in order):
+    +0.12s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.84s  gh api repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 --paginate --slurp
+    +0.84s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 --paginate --slurp
+    +0.84s  gh api repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 --paginate --slurp
+    +0.84s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 --paginate --slurp
+    +0.84s  gh api repos/kunchenguid/firstmate
+    +0.84s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +0.97s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+--- proxy log for this poll (HTTP layer):
+    [S12 persistent TCP reset on the reviews read (connection error: retry once)] GET /repos/kunchenguid/firstmate/pulls/7302 -> forwarded HTTP 200
+    [S12 persistent TCP reset on the reviews read (connection error: retry once)] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> injected TCP reset
+    [S12 persistent TCP reset on the reviews read (connection error: retry once)] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> injected TCP reset
+    [S12 persistent TCP reset on the reviews read (connection error: retry once)] GET /repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S12 persistent TCP reset on the reviews read (connection error: retry once)] GET /repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S12 persistent TCP reset on the reviews read (connection error: retry once)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 -> forwarded HTTP 200
+    [S12 persistent TCP reset on the reviews read (connection error: retry once)] GET /repos/kunchenguid/firstmate -> forwarded HTTP 200
+    [S12 persistent TCP reset on the reviews read (connection error: retry once)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 -> forwarded HTTP 200
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:01:56Z","error":"forge observation unavailable: reviews read exited 1 with 19s of budget left: Get \"https://api.github.com/repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100\": read tcp 127.0.0.1:38618->127.0.0.1:39045: read: connection reset by p","head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S13 one transient TCP reset on the reviews read (retry recovers)
+--- injected rules: [{"match":"/pulls/7302/reviews","action":"reset","times":1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 11.1s
+--- poll stdout (what the watcher turns into a wake):
+    (empty: no wake)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.11s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.88s  gh api repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 --paginate --slurp
+    +0.88s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 --paginate --slurp
+    +0.88s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +0.88s  gh api repos/kunchenguid/firstmate
+    +0.88s  gh api repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 --paginate --slurp
+    +0.88s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 --paginate --slurp
+    +1.89s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +3.83s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+--- proxy log for this poll (HTTP layer):
+    [S13 one transient TCP reset on the reviews read (retry recovers)] GET /repos/kunchenguid/firstmate/pulls/7302 -> forwarded HTTP 200
+    [S13 one transient TCP reset on the reviews read (retry recovers)] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> injected TCP reset
+    [S13 one transient TCP reset on the reviews read (retry recovers)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 -> forwarded HTTP 200
+    [S13 one transient TCP reset on the reviews read (retry recovers)] GET /repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S13 one transient TCP reset on the reviews read (retry recovers)] GET /repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S13 one transient TCP reset on the reviews read (retry recovers)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 -> forwarded HTTP 200
+    [S13 one transient TCP reset on the reviews read (retry recovers)] GET /repos/kunchenguid/firstmate -> forwarded HTTP 200
+    [S13 one transient TCP reset on the reviews read (retry recovers)] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> forwarded HTTP 200
+    [S13 one transient TCP reset on the reviews read (retry recovers)] POST /graphql -> forwarded HTTP 200
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:01:58Z","error":null,"head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S14 connection refused on every read (proxy port closed: retry once)
+--- injected rules: []
+--- HTTPS_PROXY override: http://127.0.0.1:1
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 0.4s
+--- poll stdout (what the watcher turns into a wake):
+    contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - core read exited 1 with 20s of budget left: Get "https://api.github.com/repos/kunchenguid/firstmate/pulls/7302": proxyconnect tcp: dial tcp 127.0.0.1:1: connect: connection refused
+--- real gh invocations by the poll (counting shim, in order):
+    +0.12s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.24s  gh api repos/kunchenguid/firstmate/pulls/7302
+--- proxy log for this poll (HTTP layer):
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:02:09Z","error":"forge observation unavailable: core read exited 1 with 20s of budget left: Get \"https://api.github.com/repos/kunchenguid/firstmate/pulls/7302\": proxyconnect tcp: dial tcp 127.0.0.1:1: connect: connection refused","head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S15 DNS failure on every read (unresolvable proxy host: retry once)
+--- injected rules: []
+--- HTTPS_PROXY override: http://no-such-proxy-host-f67.invalid:8080
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 0.4s
+--- poll stdout (what the watcher turns into a wake):
+    contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - core read exited 1 with 19s of budget left: error connecting to no-such-proxy-host-f67.invalid
+--- real gh invocations by the poll (counting shim, in order):
+    +0.12s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.24s  gh api repos/kunchenguid/firstmate/pulls/7302
+--- proxy log for this poll (HTTP layer):
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:02:09Z","error":"forge observation unavailable: core read exited 1 with 19s of budget left: error connecting to no-such-proxy-host-f67.invalid","head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S16 TLS failure on every read (proxy certificate not trusted: retry once)
+--- injected rules: []
+--- SSL_CERT_FILE override: ''
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 0.4s
+--- poll stdout (what the watcher turns into a wake):
+    contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - core read exited 1 with 20s of budget left: Get "https://api.github.com/repos/kunchenguid/firstmate/pulls/7302": tls: failed to verify certificate: x509: certificate signed by unknown authority
+--- real gh invocations by the poll (counting shim, in order):
+    +0.11s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.23s  gh api repos/kunchenguid/firstmate/pulls/7302
+--- proxy log for this poll (HTTP layer):
+    tls-handshake-failed host=api.github.com err=SSLError
+    tls-handshake-failed host=api.github.com err=SSLError
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:02:10Z","error":"forge observation unavailable: core read exited 1 with 20s of budget left: Get \"https://api.github.com/repos/kunchenguid/firstmate/pulls/7302\": tls: failed to verify certificate: x509: certificate signed by unknown authority","head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+
+Note on S13: its 11.1s wall time was a one-off network delay. Two reruns of the same injection finished in 2.2s and 2.7s, also with no wake, and each made exactly 2 reviews-read calls.

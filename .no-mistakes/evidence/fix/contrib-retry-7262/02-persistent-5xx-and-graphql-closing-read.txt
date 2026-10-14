@@ -1,0 +1,153 @@
+=== scenario: S3 persistent HTTP 500 on the reviews read
+--- injected rules: [{"match":"/pulls/7302/reviews","action":"status","status":500,"reason":"Internal Server Error","body":"{\"message\":\"Server Error\"}","times":-1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 2.9s
+--- poll stdout (what the watcher turns into a wake):
+    contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - reviews read exited 1 with 18s of budget left: gh: Server Error (HTTP 500)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.10s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +2.23s  gh api repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 --paginate --slurp
+    +2.23s  gh api repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 --paginate --slurp
+    +2.23s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +2.23s  gh api repos/kunchenguid/firstmate
+    +2.23s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 --paginate --slurp
+    +2.23s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 --paginate --slurp
+    +2.35s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+--- proxy log for this poll (HTTP layer):
+    [S3 persistent HTTP 500 on the reviews read] GET /repos/kunchenguid/firstmate/pulls/7302 -> forwarded HTTP 200
+    [S3 persistent HTTP 500 on the reviews read] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> injected HTTP 500
+    [S3 persistent HTTP 500 on the reviews read] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> injected HTTP 500
+    [S3 persistent HTTP 500 on the reviews read] GET /repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S3 persistent HTTP 500 on the reviews read] GET /repos/kunchenguid/firstmate -> forwarded HTTP 200
+    [S3 persistent HTTP 500 on the reviews read] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 -> forwarded HTTP 200
+    [S3 persistent HTTP 500 on the reviews read] GET /repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S3 persistent HTTP 500 on the reviews read] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 -> forwarded HTTP 200
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:01:09Z","error":"forge observation unavailable: reviews read exited 1 with 18s of budget left: gh: Server Error (HTTP 500)","head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S4a one transient HTTP 502 (empty body) on the GraphQL closing read (gh pr view)
+--- injected rules: [{"match":"/graphql","method":"POST","action":"status","status":502,"reason":"Bad Gateway","body":"","times":1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 3.1s
+--- poll stdout (what the watcher turns into a wake):
+    (empty: no wake)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.10s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +1.42s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 --paginate --slurp
+    +1.42s  gh api repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 --paginate --slurp
+    +1.42s  gh api repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 --paginate --slurp
+    +1.42s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 --paginate --slurp
+    +1.42s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +1.42s  gh api repos/kunchenguid/firstmate
+    +2.14s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+    +2.25s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+--- proxy log for this poll (HTTP layer):
+    [S4a one transient HTTP 502 (empty body) on the GraphQL closing read (gh pr view)] GET /repos/kunchenguid/firstmate/pulls/7302 -> forwarded HTTP 200
+    [S4a one transient HTTP 502 (empty body) on the GraphQL closing read (gh pr view)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 -> forwarded HTTP 200
+    [S4a one transient HTTP 502 (empty body) on the GraphQL closing read (gh pr view)] GET /repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S4a one transient HTTP 502 (empty body) on the GraphQL closing read (gh pr view)] GET /repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S4a one transient HTTP 502 (empty body) on the GraphQL closing read (gh pr view)] GET /repos/kunchenguid/firstmate -> forwarded HTTP 200
+    [S4a one transient HTTP 502 (empty body) on the GraphQL closing read (gh pr view)] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> forwarded HTTP 200
+    [S4a one transient HTTP 502 (empty body) on the GraphQL closing read (gh pr view)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 -> forwarded HTTP 200
+    [S4a one transient HTTP 502 (empty body) on the GraphQL closing read (gh pr view)] POST /graphql -> injected HTTP 502
+    [S4a one transient HTTP 502 (empty body) on the GraphQL closing read (gh pr view)] POST /graphql -> forwarded HTTP 200
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:01:12Z","error":null,"head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S4b one transient HTTP 502 (HTML body) on the GraphQL closing read (gh pr view)
+--- injected rules: [{"match":"/graphql","method":"POST","action":"status","status":502,"reason":"Bad Gateway","content_type":"text/html","body":"<html><body><h1>502 Bad Gateway</h1>Unicorn!</body></html>","times":1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 2.2s
+--- poll stdout (what the watcher turns into a wake):
+    (empty: no wake)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.11s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +1.13s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 --paginate --slurp
+    +1.13s  gh api repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 --paginate --slurp
+    +1.13s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 --paginate --slurp
+    +1.13s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +1.13s  gh api repos/kunchenguid/firstmate
+    +1.13s  gh api repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 --paginate --slurp
+    +1.55s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+    +1.67s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+--- proxy log for this poll (HTTP layer):
+    [S4b one transient HTTP 502 (HTML body) on the GraphQL closing read (gh pr view)] GET /repos/kunchenguid/firstmate/pulls/7302 -> forwarded HTTP 200
+    [S4b one transient HTTP 502 (HTML body) on the GraphQL closing read (gh pr view)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 -> forwarded HTTP 200
+    [S4b one transient HTTP 502 (HTML body) on the GraphQL closing read (gh pr view)] GET /repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S4b one transient HTTP 502 (HTML body) on the GraphQL closing read (gh pr view)] GET /repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S4b one transient HTTP 502 (HTML body) on the GraphQL closing read (gh pr view)] GET /repos/kunchenguid/firstmate -> forwarded HTTP 200
+    [S4b one transient HTTP 502 (HTML body) on the GraphQL closing read (gh pr view)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 -> forwarded HTTP 200
+    [S4b one transient HTTP 502 (HTML body) on the GraphQL closing read (gh pr view)] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> forwarded HTTP 200
+    [S4b one transient HTTP 502 (HTML body) on the GraphQL closing read (gh pr view)] POST /graphql -> injected HTTP 502
+    [S4b one transient HTTP 502 (HTML body) on the GraphQL closing read (gh pr view)] POST /graphql -> forwarded HTTP 200
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:01:15Z","error":null,"head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S4c persistent HTTP 503 (empty body) on the GraphQL closing read
+--- injected rules: [{"match":"/graphql","method":"POST","action":"status","status":503,"reason":"Service Unavailable","body":"","times":-1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 1.8s
+--- poll stdout (what the watcher turns into a wake):
+    contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - head read exited 1 with 18s of budget left: HTTP 503 (https://api.github.com/graphql)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.12s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.95s  gh api repos/kunchenguid/firstmate
+    +0.95s  gh api repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 --paginate --slurp
+    +0.95s  gh api repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 --paginate --slurp
+    +0.95s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 --paginate --slurp
+    +0.95s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 --paginate --slurp
+    +0.95s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +1.56s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+    +1.68s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+--- proxy log for this poll (HTTP layer):
+    [S4c persistent HTTP 503 (empty body) on the GraphQL closing read] GET /repos/kunchenguid/firstmate/pulls/7302 -> forwarded HTTP 200
+    [S4c persistent HTTP 503 (empty body) on the GraphQL closing read] GET /repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S4c persistent HTTP 503 (empty body) on the GraphQL closing read] GET /repos/kunchenguid/firstmate -> forwarded HTTP 200
+    [S4c persistent HTTP 503 (empty body) on the GraphQL closing read] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> forwarded HTTP 200
+    [S4c persistent HTTP 503 (empty body) on the GraphQL closing read] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 -> forwarded HTTP 200
+    [S4c persistent HTTP 503 (empty body) on the GraphQL closing read] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 -> forwarded HTTP 200
+    [S4c persistent HTTP 503 (empty body) on the GraphQL closing read] GET /repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S4c persistent HTTP 503 (empty body) on the GraphQL closing read] POST /graphql -> injected HTTP 503
+    [S4c persistent HTTP 503 (empty body) on the GraphQL closing read] POST /graphql -> injected HTTP 503
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:01:17Z","error":"forge observation unavailable: head read exited 1 with 18s of budget left: HTTP 503 (https://api.github.com/graphql)","head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S4d persistent HTTP 502 (JSON message body) on the GraphQL closing read
+--- injected rules: [{"match":"/graphql","method":"POST","action":"status","status":502,"reason":"Bad Gateway","body":"{\"message\":\"Server Error\"}","times":-1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 1.7s
+--- poll stdout (what the watcher turns into a wake):
+    contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - head read exited 1 with 19s of budget left: HTTP 502: Server Error (https://api.github.com/graphql)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.11s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.93s  gh api repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 --paginate --slurp
+    +0.93s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 --paginate --slurp
+    +0.93s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +0.93s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 --paginate --slurp
+    +0.93s  gh api repos/kunchenguid/firstmate
+    +0.94s  gh api repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 --paginate --slurp
+    +1.45s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+    +1.57s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+--- proxy log for this poll (HTTP layer):
+    [S4d persistent HTTP 502 (JSON message body) on the GraphQL closing read] GET /repos/kunchenguid/firstmate/pulls/7302 -> forwarded HTTP 200
+    [S4d persistent HTTP 502 (JSON message body) on the GraphQL closing read] GET /repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S4d persistent HTTP 502 (JSON message body) on the GraphQL closing read] GET /repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S4d persistent HTTP 502 (JSON message body) on the GraphQL closing read] GET /repos/kunchenguid/firstmate -> forwarded HTTP 200
+    [S4d persistent HTTP 502 (JSON message body) on the GraphQL closing read] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 -> forwarded HTTP 200
+    [S4d persistent HTTP 502 (JSON message body) on the GraphQL closing read] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 -> forwarded HTTP 200
+    [S4d persistent HTTP 502 (JSON message body) on the GraphQL closing read] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> forwarded HTTP 200
+    [S4d persistent HTTP 502 (JSON message body) on the GraphQL closing read] POST /graphql -> injected HTTP 502
+    [S4d persistent HTTP 502 (JSON message body) on the GraphQL closing read] POST /graphql -> injected HTTP 502
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:01:19Z","error":"forge observation unavailable: head read exited 1 with 19s of budget left: HTTP 502: Server Error (https://api.github.com/graphql)","head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+

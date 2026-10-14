@@ -1,0 +1,92 @@
+=== watcher scenario: W1 one transient HTTP 500 during a watcher checkpoint (branch head)
+--- injected rules: [{"match":"/pulls/7302/reviews","action":"status","status":500,"reason":"Internal Server Error","body":"{\"message\":\"Server Error\"}","times":1}]
+--- registered check: exec bin/fm-contributions.sh poll
+--- command: bin/fm-watch-checkpoint.sh --seconds 20  (FM_HOME=lab, FM_CHECK_INTERVAL=0, FM_POLL=1)
+--- checkpoint exit 124 (0 = actionable wake surfaced, 124 = quiet), wall 20.1s
+--- checkpoint stdout (what the primary agent is woken with):
+    checkpoint: no actionable wake within 20s
+--- real gh invocations of the reviews read during the checkpoint: 7
+--- polls run by the watcher (core reads): 7
+--- proxy injections: 1
+--- durable record after the checkpoint:
+    {"checked_at":"2026-10-14T20:03:42Z","error":null}
+--- state/.wake-queue check rows:
+
+=== watcher scenario: W2 persistent HTTP 500 during a watcher checkpoint (branch head)
+--- injected rules: [{"match":"/pulls/7302/reviews","action":"status","status":500,"reason":"Internal Server Error","body":"{\"message\":\"Server Error\"}","times":-1}]
+--- registered check: exec bin/fm-contributions.sh poll
+--- command: bin/fm-watch-checkpoint.sh --seconds 20  (FM_HOME=lab, FM_CHECK_INTERVAL=0, FM_POLL=1)
+--- checkpoint exit 0 (0 = actionable wake surfaced, 124 = quiet), wall 1.9s
+--- checkpoint stdout (what the primary agent is woken with):
+    check: /tmp/fm-lab.niqZ61/state/contributions.check.sh: contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - reviews read exited 1 with 19s of budget left: gh: Server Error (HTTP 500)
+--- real gh invocations of the reviews read during the checkpoint: 2
+--- polls run by the watcher (core reads): 1
+--- proxy injections: 2
+--- durable record after the checkpoint:
+    {"checked_at":"2026-10-14T20:03:46Z","error":"forge observation unavailable: reviews read exited 1 with 19s of budget left: gh: Server Error (HTTP 500)"}
+--- state/.wake-queue check rows:
+    check: <lab>/state/contributions.check.sh: contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - reviews read exited 1 with 19s of budget left: gh: Server Error (HTTP 500)
+
+=== watcher scenario: W1-base one transient HTTP 500 during a watcher checkpoint (BASE commit 24f3a6b8 check shim)
+--- injected rules: [{"match":"/pulls/7302/reviews","action":"status","status":500,"reason":"Internal Server Error","body":"{\"message\":\"Server Error\"}","times":1}]
+--- registered check: exec /tmp/fm-contrib-live.uM3RGJ/base/bin/fm-contributions.sh poll
+--- command: bin/fm-watch-checkpoint.sh --seconds 20  (FM_HOME=lab, FM_CHECK_INTERVAL=0, FM_POLL=1)
+--- checkpoint exit 0 (0 = actionable wake surfaced, 124 = quiet), wall 1.9s
+--- checkpoint stdout (what the primary agent is woken with):
+    check: /tmp/fm-lab.niqZ61/state/contributions.check.sh: contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - reviews read exited 1 with 19s of budget left: gh: Server Error (HTTP 500)
+--- real gh invocations of the reviews read during the checkpoint: 1
+--- polls run by the watcher (core reads): 1
+--- proxy injections: 1
+--- durable record after the checkpoint:
+    {"checked_at":"2026-10-14T20:03:48Z","error":"forge observation unavailable: reviews read exited 1 with 19s of budget left: gh: Server Error (HTTP 500)"}
+--- state/.wake-queue check rows:
+    check: <lab>/state/contributions.check.sh: contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - reviews read exited 1 with 19s of budget left: gh: Server Error (HTTP 500)
+
+=== watcher scenario: W1-detail one transient HTTP 500 during a watcher checkpoint (branch head), with per-call log
+--- injected rules: [{"match":"/pulls/7302/reviews","action":"status","status":500,"reason":"Internal Server Error","body":"{\"message\":\"Server Error\"}","times":1}]
+--- registered check: exec bin/fm-contributions.sh poll
+--- command: bin/fm-watch-checkpoint.sh --seconds 20  (FM_HOME=lab, FM_CHECK_INTERVAL=0, FM_POLL=1)
+--- checkpoint exit 124 (0 = actionable wake surfaced, 124 = quiet), wall 20.1s
+--- checkpoint stdout (what the primary agent is woken with):
+    checkpoint: no actionable wake within 20s
+--- real gh invocations of the reviews read during the checkpoint: 7
+--- polls run by the watcher (core reads): 6
+--- proxy injections: 1
+--- durable record after the checkpoint:
+    {"checked_at":"2026-10-14T20:04:19Z","error":null}
+--- state/.wake-queue check rows:
+
+--- full gh call sequence during W1-detail (shim log, seconds since first call):
+    +  0.00s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +  1.62s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +  1.74s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +  2.16s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+    +  4.05s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +  4.67s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +  5.18s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+    +  7.10s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +  8.02s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +  8.44s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+    + 10.39s  gh api repos/kunchenguid/firstmate/pulls/7302
+    + 11.11s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    + 11.63s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+    + 13.55s  gh api repos/kunchenguid/firstmate/pulls/7302
+    + 14.48s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    + 14.99s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+    + 17.01s  gh api repos/kunchenguid/firstmate/pulls/7302
+    + 17.73s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    + 18.14s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+--- proxy log lines for W1-detail:
+    1792008244.264 GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> injected HTTP 500
+    1792008244.690 GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> forwarded HTTP 200
+    1792008245.119 POST /graphql -> forwarded HTTP 200
+    1792008247.666 GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> forwarded HTTP 200
+    1792008248.234 POST /graphql -> forwarded HTTP 200
+    1792008250.999 GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> forwarded HTTP 200
+    1792008251.439 POST /graphql -> forwarded HTTP 200
+    1792008254.140 GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> forwarded HTTP 200
+    1792008254.652 POST /graphql -> forwarded HTTP 200
+    1792008257.475 GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> forwarded HTTP 200
+    1792008258.152 POST /graphql -> forwarded HTTP 200
+    1792008260.696 GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> forwarded HTTP 200
+    1792008261.198 POST /graphql -> forwarded HTTP 200

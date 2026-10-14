@@ -1,0 +1,44 @@
+=== scenario: S17 core read hangs past the 5s read bound (timeout: budget refusal, never retried, no wake, record untouched)
+--- injected rules: [{"match":"/repos/kunchenguid/firstmate/pulls/7302","action":"hang","seconds":12,"times":-1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 5.2s
+--- poll stdout (what the watcher turns into a wake):
+    (empty: no wake)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.11s  gh api repos/kunchenguid/firstmate/pulls/7302
+--- proxy log for this poll (HTTP layer):
+    [S17 core read hangs past the 5s read bound (timeout: budget refusal, never retried, no wake, record untouched)] GET /repos/kunchenguid/firstmate/pulls/7302 -> injected hang 12s
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:00:18Z","error":null,"head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S18 reviews read gets HTTP 500, then its retry hangs past the read bound (killed retry keeps the genuine 500)
+--- injected rules: [{"match":"/pulls/7302/reviews","action":"status","status":500,"reason":"Internal Server Error","body":"{\"message\":\"Server Error\"}","times":1},{"match":"/pulls/7302/reviews","action":"hang","seconds":12,"times":-1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 6.1s
+--- poll stdout (what the watcher turns into a wake):
+    contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - reviews read exited 1 with 20s of budget left: gh: Server Error (HTTP 500)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.10s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.82s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 --paginate --slurp
+    +0.82s  gh api repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 --paginate --slurp
+    +0.82s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +0.82s  gh api repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 --paginate --slurp
+    +0.82s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 --paginate --slurp
+    +0.82s  gh api repos/kunchenguid/firstmate
+    +0.94s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+--- proxy log for this poll (HTTP layer):
+    [S18 reviews read gets HTTP 500, then its retry hangs past the read bound (killed retry keeps the genuine 500)] GET /repos/kunchenguid/firstmate/pulls/7302 -> forwarded HTTP 200
+    [S18 reviews read gets HTTP 500, then its retry hangs past the read bound (killed retry keeps the genuine 500)] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> injected HTTP 500
+    [S18 reviews read gets HTTP 500, then its retry hangs past the read bound (killed retry keeps the genuine 500)] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> injected hang 12s
+    [S18 reviews read gets HTTP 500, then its retry hangs past the read bound (killed retry keeps the genuine 500)] GET /repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S18 reviews read gets HTTP 500, then its retry hangs past the read bound (killed retry keeps the genuine 500)] GET /repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S18 reviews read gets HTTP 500, then its retry hangs past the read bound (killed retry keeps the genuine 500)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 -> forwarded HTTP 200
+    [S18 reviews read gets HTTP 500, then its retry hangs past the read bound (killed retry keeps the genuine 500)] GET /repos/kunchenguid/firstmate -> forwarded HTTP 200
+    [S18 reviews read gets HTTP 500, then its retry hangs past the read bound (killed retry keeps the genuine 500)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 -> forwarded HTTP 200
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:02:58Z","error":"forge observation unavailable: reviews read exited 1 with 20s of budget left: gh: Server Error (HTTP 500)","head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+

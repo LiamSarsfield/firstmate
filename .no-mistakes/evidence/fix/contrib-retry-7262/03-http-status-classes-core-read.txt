@@ -1,0 +1,141 @@
+=== scenario: S5 persistent HTTP 404 on the core read (lost-login shape: must NOT retry)
+--- injected rules: [{"match":"/repos/kunchenguid/firstmate/pulls/7302","action":"status","status":404,"reason":"Not Found","body":"{\"message\":\"Not Found\",\"documentation_url\":\"https://docs.github.com/rest\",\"status\":\"404\"}","times":-1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 0.3s
+--- poll stdout (what the watcher turns into a wake):
+    contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - core read exited 1 with 20s of budget left: gh: Not Found (HTTP 404)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.12s  gh api repos/kunchenguid/firstmate/pulls/7302
+--- proxy log for this poll (HTTP layer):
+    [S5 persistent HTTP 404 on the core read (lost-login shape: must NOT retry)] GET /repos/kunchenguid/firstmate/pulls/7302 -> injected HTTP 404
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:01:36Z","error":"forge observation unavailable: core read exited 1 with 20s of budget left: gh: Not Found (HTTP 404)","head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S6 persistent HTTP 401 on the core read (must NOT retry)
+--- injected rules: [{"match":"/repos/kunchenguid/firstmate/pulls/7302","action":"status","status":401,"reason":"Unauthorized","body":"{\"message\":\"Bad credentials\",\"documentation_url\":\"https://docs.github.com/rest\",\"status\":\"401\"}","times":-1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 0.3s
+--- poll stdout (what the watcher turns into a wake):
+    contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - core read exited 1 with 20s of budget left: gh: Bad credentials (HTTP 401)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.11s  gh api repos/kunchenguid/firstmate/pulls/7302
+--- proxy log for this poll (HTTP layer):
+    [S6 persistent HTTP 401 on the core read (must NOT retry)] GET /repos/kunchenguid/firstmate/pulls/7302 -> injected HTTP 401
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:01:37Z","error":"forge observation unavailable: core read exited 1 with 20s of budget left: gh: Bad credentials (HTTP 401)","head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S7 persistent plain HTTP 403 on the core read (must NOT retry)
+--- injected rules: [{"match":"/repos/kunchenguid/firstmate/pulls/7302","action":"status","status":403,"reason":"Forbidden","body":"{\"message\":\"Resource not accessible by personal access token\",\"documentation_url\":\"https://docs.github.com/rest\",\"status\":\"403\"}","times":-1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 0.3s
+--- poll stdout (what the watcher turns into a wake):
+    contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - core read exited 1 with 20s of budget left: gh: Resource not accessible by personal access token (HTTP 403)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.12s  gh api repos/kunchenguid/firstmate/pulls/7302
+--- proxy log for this poll (HTTP layer):
+    [S7 persistent plain HTTP 403 on the core read (must NOT retry)] GET /repos/kunchenguid/firstmate/pulls/7302 -> injected HTTP 403
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:01:37Z","error":"forge observation unavailable: core read exited 1 with 20s of budget left: gh: Resource not accessible by personal access token (HTTP 403)","head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S8 persistent secondary-rate-limit HTTP 403 on the core read (retry once)
+--- injected rules: [{"match":"/repos/kunchenguid/firstmate/pulls/7302","action":"status","status":403,"reason":"Forbidden","body":"{\"message\":\"You have exceeded a secondary rate limit. Please wait a few minutes before you try again. If you reach out to GitHub Support for help, please include the request ID 9F3A:1B2C:3D4E5F:6A7B8C:670D1234.\",\"documentation_url\":\"https://docs.github.com/rest\",\"status\":\"403\"}","times":-1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 0.4s
+--- poll stdout (what the watcher turns into a wake):
+    contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - core read exited 1 with 20s of budget left: gh: You have exceeded a secondary rate limit. Please wait a few minutes before you try again. If you reach out to GitHub Support for help, please include the re
+--- real gh invocations by the poll (counting shim, in order):
+    +0.11s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.23s  gh api repos/kunchenguid/firstmate/pulls/7302
+--- proxy log for this poll (HTTP layer):
+    [S8 persistent secondary-rate-limit HTTP 403 on the core read (retry once)] GET /repos/kunchenguid/firstmate/pulls/7302 -> injected HTTP 403
+    [S8 persistent secondary-rate-limit HTTP 403 on the core read (retry once)] GET /repos/kunchenguid/firstmate/pulls/7302 -> injected HTTP 403
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:01:37Z","error":"forge observation unavailable: core read exited 1 with 20s of budget left: gh: You have exceeded a secondary rate limit. Please wait a few minutes before you try again. If you reach out to GitHub Support for help, please include the re","head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S9 one transient secondary-rate-limit HTTP 403 on the core read (retry recovers)
+--- injected rules: [{"match":"/repos/kunchenguid/firstmate/pulls/7302","action":"status","status":403,"reason":"Forbidden","body":"{\"message\":\"You have exceeded a secondary rate limit. Please wait a few minutes before you try again. If you reach out to GitHub Support for help, please include the request ID 9F3A:1B2C:3D4E5F:6A7B8C:670D1234.\",\"documentation_url\":\"https://docs.github.com/rest\",\"status\":\"403\"}","times":1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 2.1s
+--- poll stdout (what the watcher turns into a wake):
+    (empty: no wake)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.11s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.23s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.95s  gh api repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 --paginate --slurp
+    +0.95s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 --paginate --slurp
+    +0.95s  gh api repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 --paginate --slurp
+    +0.96s  gh api repos/kunchenguid/firstmate
+    +0.96s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 --paginate --slurp
+    +0.96s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +1.47s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+--- proxy log for this poll (HTTP layer):
+    [S9 one transient secondary-rate-limit HTTP 403 on the core read (retry recovers)] GET /repos/kunchenguid/firstmate/pulls/7302 -> injected HTTP 403
+    [S9 one transient secondary-rate-limit HTTP 403 on the core read (retry recovers)] GET /repos/kunchenguid/firstmate/pulls/7302 -> forwarded HTTP 200
+    [S9 one transient secondary-rate-limit HTTP 403 on the core read (retry recovers)] GET /repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S9 one transient secondary-rate-limit HTTP 403 on the core read (retry recovers)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 -> forwarded HTTP 200
+    [S9 one transient secondary-rate-limit HTTP 403 on the core read (retry recovers)] GET /repos/kunchenguid/firstmate -> forwarded HTTP 200
+    [S9 one transient secondary-rate-limit HTTP 403 on the core read (retry recovers)] GET /repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S9 one transient secondary-rate-limit HTTP 403 on the core read (retry recovers)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 -> forwarded HTTP 200
+    [S9 one transient secondary-rate-limit HTTP 403 on the core read (retry recovers)] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> forwarded HTTP 200
+    [S9 one transient secondary-rate-limit HTTP 403 on the core read (retry recovers)] POST /graphql -> forwarded HTTP 200
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:01:38Z","error":null,"head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S10 persistent HTTP 429 on the core read (retry once)
+--- injected rules: [{"match":"/repos/kunchenguid/firstmate/pulls/7302","action":"status","status":429,"reason":"Too Many Requests","body":"{\"message\":\"API rate limit exceeded for user ID 1.\",\"documentation_url\":\"https://docs.github.com/rest\",\"status\":\"429\"}","times":-1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 0.4s
+--- poll stdout (what the watcher turns into a wake):
+    contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - core read exited 1 with 20s of budget left: gh: API rate limit exceeded for user ID 1. (HTTP 429)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.10s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.22s  gh api repos/kunchenguid/firstmate/pulls/7302
+--- proxy log for this poll (HTTP layer):
+    [S10 persistent HTTP 429 on the core read (retry once)] GET /repos/kunchenguid/firstmate/pulls/7302 -> injected HTTP 429
+    [S10 persistent HTTP 429 on the core read (retry once)] GET /repos/kunchenguid/firstmate/pulls/7302 -> injected HTTP 429
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:01:40Z","error":"forge observation unavailable: core read exited 1 with 20s of budget left: gh: API rate limit exceeded for user ID 1. (HTTP 429)","head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S11 one transient HTTP 429 on the core read (retry recovers)
+--- injected rules: [{"match":"/repos/kunchenguid/firstmate/pulls/7302","action":"status","status":429,"reason":"Too Many Requests","body":"{\"message\":\"API rate limit exceeded for user ID 1.\",\"documentation_url\":\"https://docs.github.com/rest\",\"status\":\"429\"}","times":1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 2.0s
+--- poll stdout (what the watcher turns into a wake):
+    (empty: no wake)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.10s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.21s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.94s  gh api repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 --paginate --slurp
+    +0.94s  gh api repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 --paginate --slurp
+    +0.94s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +0.94s  gh api repos/kunchenguid/firstmate
+    +0.94s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 --paginate --slurp
+    +0.94s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 --paginate --slurp
+    +1.45s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+--- proxy log for this poll (HTTP layer):
+    [S11 one transient HTTP 429 on the core read (retry recovers)] GET /repos/kunchenguid/firstmate/pulls/7302 -> injected HTTP 429
+    [S11 one transient HTTP 429 on the core read (retry recovers)] GET /repos/kunchenguid/firstmate/pulls/7302 -> forwarded HTTP 200
+    [S11 one transient HTTP 429 on the core read (retry recovers)] GET /repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S11 one transient HTTP 429 on the core read (retry recovers)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 -> forwarded HTTP 200
+    [S11 one transient HTTP 429 on the core read (retry recovers)] GET /repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S11 one transient HTTP 429 on the core read (retry recovers)] GET /repos/kunchenguid/firstmate -> forwarded HTTP 200
+    [S11 one transient HTTP 429 on the core read (retry recovers)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 -> forwarded HTTP 200
+    [S11 one transient HTTP 429 on the core read (retry recovers)] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> forwarded HTTP 200
+    [S11 one transient HTTP 429 on the core read (retry recovers)] POST /graphql -> forwarded HTTP 200
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:01:40Z","error":null,"head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+

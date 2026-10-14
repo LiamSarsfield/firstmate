@@ -1,0 +1,14 @@
+=== scenario: E1 failure episode across three consecutive real polls (persistent 500, persistent 500, recovered)
+--- poll 1: persistent HTTP 500 on reviews read
+    exit 0; reviews-read gh invocations: 2
+    stdout: contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - reviews read exited 1 with 19s of budget left: gh: Server Error (HTTP 500)
+    record: {"checked_at":"2026-10-14T20:04:33Z","error":"forge observation unavailable: reviews read exited 1 with 19s of budget left: gh: Server Error (HTTP 500)"}
+--- poll 2: same persistent HTTP 500 (episode already open)
+    exit 0; reviews-read gh invocations: 2
+    stdout: (empty: no wake)
+    record: {"checked_at":"2026-10-14T20:04:35Z","error":"forge observation unavailable: reviews read exited 1 with 19s of budget left: gh: Server Error (HTTP 500)"}
+--- poll 3: GitHub healthy again (no injection)
+    exit 0; reviews-read gh invocations: 1
+    stdout: (empty: no wake)
+    record: {"checked_at":"2026-10-14T20:04:36Z","error":null}
+

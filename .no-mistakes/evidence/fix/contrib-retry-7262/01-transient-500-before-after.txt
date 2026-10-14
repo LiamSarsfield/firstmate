@@ -1,0 +1,87 @@
+=== scenario: S1 happy path: no injected fault
+--- injected rules: []
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 1.8s
+--- poll stdout (what the watcher turns into a wake):
+    (empty: no wake)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.11s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.83s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 --paginate --slurp
+    +0.83s  gh api repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 --paginate --slurp
+    +0.84s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 --paginate --slurp
+    +0.84s  gh api repos/kunchenguid/firstmate
+    +0.84s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +0.84s  gh api repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 --paginate --slurp
+    +1.25s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+--- proxy log for this poll (HTTP layer):
+    [S1 happy path: no injected fault] GET /repos/kunchenguid/firstmate/pulls/7302 -> forwarded HTTP 200
+    [S1 happy path: no injected fault] GET /repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S1 happy path: no injected fault] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 -> forwarded HTTP 200
+    [S1 happy path: no injected fault] GET /repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S1 happy path: no injected fault] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 -> forwarded HTTP 200
+    [S1 happy path: no injected fault] GET /repos/kunchenguid/firstmate -> forwarded HTTP 200
+    [S1 happy path: no injected fault] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> forwarded HTTP 200
+    [S1 happy path: no injected fault] POST /graphql -> forwarded HTTP 200
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:00:52Z","error":null,"head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S2 one transient HTTP 500 on the reviews read (branch head)
+--- injected rules: [{"match":"/pulls/7302/reviews","action":"status","status":500,"reason":"Internal Server Error","body":"{\"message\":\"Server Error\"}","times":1}]
+--- script: bin/fm-contributions.sh
+--- poll exit 0, wall 1.9s
+--- poll stdout (what the watcher turns into a wake):
+    (empty: no wake)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.10s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.82s  gh api repos/kunchenguid/firstmate
+    +0.82s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 --paginate --slurp
+    +0.82s  gh api repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 --paginate --slurp
+    +0.82s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +0.82s  gh api repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 --paginate --slurp
+    +0.82s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 --paginate --slurp
+    +0.94s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+    +1.35s  gh pr view https://github.com/kunchenguid/firstmate/pull/7302 --json headRefOid,reviewDecision
+--- proxy log for this poll (HTTP layer):
+    [S2 one transient HTTP 500 on the reviews read (branch head)] GET /repos/kunchenguid/firstmate/pulls/7302 -> forwarded HTTP 200
+    [S2 one transient HTTP 500 on the reviews read (branch head)] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> injected HTTP 500
+    [S2 one transient HTTP 500 on the reviews read (branch head)] GET /repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S2 one transient HTTP 500 on the reviews read (branch head)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 -> forwarded HTTP 200
+    [S2 one transient HTTP 500 on the reviews read (branch head)] GET /repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S2 one transient HTTP 500 on the reviews read (branch head)] GET /repos/kunchenguid/firstmate -> forwarded HTTP 200
+    [S2 one transient HTTP 500 on the reviews read (branch head)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 -> forwarded HTTP 200
+    [S2 one transient HTTP 500 on the reviews read (branch head)] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> forwarded HTTP 200
+    [S2 one transient HTTP 500 on the reviews read (branch head)] POST /graphql -> forwarded HTTP 200
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:00:54Z","error":null,"head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+
+=== scenario: S2-base one transient HTTP 500 on the reviews read (BASE commit 24f3a6b8, before the fix)
+--- injected rules: [{"match":"/pulls/7302/reviews","action":"status","status":500,"reason":"Internal Server Error","body":"{\"message\":\"Server Error\"}","times":1}]
+--- script: /tmp/fm-contrib-live.uM3RGJ/base/bin/fm-contributions.sh
+--- poll exit 0, wall 1.6s
+--- poll stdout (what the watcher turns into a wake):
+    contributions: observation unavailable for https://github.com/kunchenguid/firstmate/pull/7302 - reviews read exited 1 with 19s of budget left: gh: Server Error (HTTP 500)
+--- real gh invocations by the poll (counting shim, in order):
+    +0.10s  gh api repos/kunchenguid/firstmate/pulls/7302
+    +0.71s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 --paginate --slurp
+    +0.71s  gh api repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 --paginate --slurp
+    +0.71s  gh api repos/kunchenguid/firstmate
+    +0.71s  gh api repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 --paginate --slurp
+    +0.71s  gh api repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 --paginate --slurp
+    +0.71s  gh api repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 --paginate --slurp
+--- proxy log for this poll (HTTP layer):
+    [S2-base one transient HTTP 500 on the reviews read (BASE commit 24f3a6b8, before the fix)] GET /repos/kunchenguid/firstmate/pulls/7302 -> forwarded HTTP 200
+    [S2-base one transient HTTP 500 on the reviews read (BASE commit 24f3a6b8, before the fix)] GET /repos/kunchenguid/firstmate/pulls/7302/reviews?per_page=100 -> injected HTTP 500
+    [S2-base one transient HTTP 500 on the reviews read (BASE commit 24f3a6b8, before the fix)] GET /repos/kunchenguid/firstmate/issues/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S2-base one transient HTTP 500 on the reviews read (BASE commit 24f3a6b8, before the fix)] GET /repos/kunchenguid/firstmate/pulls/7302/comments?per_page=100 -> forwarded HTTP 200
+    [S2-base one transient HTTP 500 on the reviews read (BASE commit 24f3a6b8, before the fix)] GET /repos/kunchenguid/firstmate -> forwarded HTTP 200
+    [S2-base one transient HTTP 500 on the reviews read (BASE commit 24f3a6b8, before the fix)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/statuses?per_page=100 -> forwarded HTTP 200
+    [S2-base one transient HTTP 500 on the reviews read (BASE commit 24f3a6b8, before the fix)] GET /repos/kunchenguid/firstmate/commits/0f0b1d50ce336e3bb2e72db9be99c517e29fcecc/check-runs?filter=all&per_page=100 -> forwarded HTTP 200
+--- durable record after the poll:
+    {"checked_at":"2026-10-14T20:00:56Z","error":"forge observation unavailable: reviews read exited 1 with 19s of budget left: gh: Server Error (HTTP 500)","head":"0f0b1d50ce336e3bb2e72db9be99c517e29fcecc","state":"open"}
+--- state/.wake-queue:
+    (empty)
+

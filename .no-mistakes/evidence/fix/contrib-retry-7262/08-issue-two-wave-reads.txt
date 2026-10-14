@@ -1,0 +1,34 @@
+=== scenario: I1 issue: one transient HTTP 502 (HTML body) on the comments read
+--- injected rules: [{"match":"/issues/7262/comments","action":"status","status":502,"reason":"Bad Gateway","content_type":"text/html","body":"<html><body>Unicorn!</body></html>","times":1}]
+--- poll exit 0
+--- poll stdout: (empty: no wake)
+--- real gh invocations:
+    gh api repos/kunchenguid/firstmate/issues/7262
+    gh api repos/kunchenguid/firstmate/issues/7262/comments?per_page=100 --paginate --slurp
+    gh api repos/kunchenguid/firstmate/issues/7262/events?per_page=100 --paginate --slurp
+    gh api repos/kunchenguid/firstmate/issues/7262/comments?per_page=100 --paginate --slurp
+--- proxy log:
+    GET /repos/kunchenguid/firstmate/issues/7262 -> forwarded HTTP 200
+    GET /repos/kunchenguid/firstmate/issues/7262/comments?per_page=100 -> injected HTTP 502
+    GET /repos/kunchenguid/firstmate/issues/7262/events?per_page=100 -> forwarded HTTP 200
+    GET /repos/kunchenguid/firstmate/issues/7262/comments?per_page=100 -> forwarded HTTP 200
+--- record: {"checked_at":"2026-10-14T20:04:54Z","error":null}
+--- wake queue: (empty)
+
+=== scenario: I2 issue: persistent HTTP 503 on the events read
+--- injected rules: [{"match":"/issues/7262/events","action":"status","status":503,"reason":"Service Unavailable","body":"{\"message\":\"Service Unavailable\"}","times":-1}]
+--- poll exit 0
+--- poll stdout: contributions: observation unavailable for https://github.com/kunchenguid/firstmate/issues/7262 - issue-events read exited 1 with 20s of budget left: gh: Service Unavailable (HTTP 503)
+--- real gh invocations:
+    gh api repos/kunchenguid/firstmate/issues/7262
+    gh api repos/kunchenguid/firstmate/issues/7262/events?per_page=100 --paginate --slurp
+    gh api repos/kunchenguid/firstmate/issues/7262/comments?per_page=100 --paginate --slurp
+    gh api repos/kunchenguid/firstmate/issues/7262/events?per_page=100 --paginate --slurp
+--- proxy log:
+    GET /repos/kunchenguid/firstmate/issues/7262 -> forwarded HTTP 200
+    GET /repos/kunchenguid/firstmate/issues/7262/events?per_page=100 -> injected HTTP 503
+    GET /repos/kunchenguid/firstmate/issues/7262/events?per_page=100 -> injected HTTP 503
+    GET /repos/kunchenguid/firstmate/issues/7262/comments?per_page=100 -> forwarded HTTP 200
+--- record: {"checked_at":"2026-10-14T20:04:56Z","error":"forge observation unavailable: issue-events read exited 1 with 20s of budget left: gh: Service Unavailable (HTTP 503)"}
+--- wake queue: (empty)
+
