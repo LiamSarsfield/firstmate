@@ -239,9 +239,9 @@ forge_error_summary() { # stderr-file
   elif grep -Fqi 'error connecting to' "$err" \
     && grep -Fqi 'check your internet connection or https://githubstatus.com' "$err"; then
     printf 'DNS error\n'
-  elif grep -Eqi '^Could not resolve host:|name resolution|no such host|DNS|dial (tcp|udp): lookup|lookup [^:]+:' "$err"; then
+  elif grep -Eqi '^Could not resolve host:|name resolution|no such host|dial (tcp|udp): lookup|lookup [^:]+:' "$err"; then
     printf 'DNS error\n'
-  elif grep -Eqi 'TLS|SSL|x509|certificate (verify|signed)' "$err"; then
+  elif grep -Eqi 'tls: |x509: |TLS handshake|certificate (verify|signed)' "$err"; then
     printf 'TLS error\n'
   elif grep -Eqi 'connection (reset|refused|closed|failed|error)|could not connect|failed to connect|error connecting|broken pipe|network is unreachable|dial (tcp|udp)|unexpected EOF' "$err"; then
     printf 'connection error\n'

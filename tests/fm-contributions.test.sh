@@ -890,7 +890,7 @@ test_http_404_is_not_retried() {
 }
 
 test_real_gh_errors_drive_retry_and_summary() {
-  local home out calls status message
+  local home out calls status message row repo error summary
   message=$'error connecting to no-such-host-f67.invalid\ncheck your internet connection or https://githubstatus.com'
   home=$(new_home real-gh-dns)
   forge_home "$home"
@@ -905,20 +905,29 @@ test_real_gh_errors_drive_retry_and_summary() {
   jq -e '.records[0].error == "forge observation unavailable: reviews read: DNS error"' \
     "$home/data/delivery/contributions.json" >/dev/null || fail 'a gh DNS error did not retain its fixed summary'
 
-  message='Get "https://api.github.com/repos/kunchenguid/firstmate/pulls/7262/reviews?per_page=100": proxyconnect tcp: dial tcp 127.0.0.1:1: connect: connection refused'
-  home=$(new_home real-gh-connection)
-  forge_home "$home"
-  wrap_forge "$home"
-  printf 'real-reviews\n' > "$home/forge/fault"
-  out=$(with_home "$home" env FORGE_ERROR_TEXT="$message" "$ROOT/bin/fm-contributions.sh" poll) \
-    || fail 'poll failed on a real gh connection-refused shape'
-  [ "$out" = 'contributions: observation unavailable for https://github.com/o/r/pull/8' ] \
-    || fail "a persistent connection error did not print one unavailable line: $out"
-  calls=$(grep -cF 'api repos/o/r/pulls/8/reviews?' "$home/forge/calls")
-  [ "$calls" = 2 ] || fail "a gh connection error made $calls review reads, expected 2"
-  jq -e '.records[0].error == "forge observation unavailable: reviews read: connection error"' \
-    "$home/data/delivery/contributions.json" >/dev/null \
-    || fail 'URL digits became an HTTP status instead of a connection summary'
+  for row in \
+    'kunchenguid/firstmate|proxyconnect tcp: dial tcp 127.0.0.1:1: connect: connection refused|connection error' \
+    'coredns/coredns|dial tcp 140.82.112.6:443: connect: connection refused|connection error' \
+    'openssl/openssl|read tcp 10.0.0.2:50000->140.82.112.6:443: read: connection reset by peer|connection error' \
+    'rustls/rustls|unexpected EOF|connection error' \
+    'coredns/coredns|net/http: TLS handshake timeout|TLS error' \
+    'openssl/openssl|dial tcp: lookup api.github.com: no such host|DNS error'; do
+    IFS='|' read -r repo error summary <<< "$row"
+    message="Get \"https://api.github.com/repos/$repo/pulls/7262/reviews?per_page=100\": $error"
+    home=$(new_home "real-gh-network-$(printf '%s' "$row" | shasum | cut -c1-8)")
+    forge_home "$home"
+    wrap_forge "$home"
+    printf 'real-reviews\n' > "$home/forge/fault"
+    out=$(with_home "$home" env FORGE_ERROR_TEXT="$message" "$ROOT/bin/fm-contributions.sh" poll) \
+      || fail "poll failed on a real gh $summary shape"
+    [ "$out" = 'contributions: observation unavailable for https://github.com/o/r/pull/8' ] \
+      || fail "a persistent $summary did not print one unavailable line: $out"
+    calls=$(grep -cF 'api repos/o/r/pulls/8/reviews?' "$home/forge/calls")
+    [ "$calls" = 2 ] || fail "a gh $summary made $calls review reads, expected 2"
+    jq -e --arg error "forge observation unavailable: reviews read: $summary" '.records[0].error == $error' \
+      "$home/data/delivery/contributions.json" >/dev/null \
+      || fail "the $repo request URL changed the $summary summary"
+  done
 
   for message in \
     'GraphQL: Could not resolve to a PullRequest with the number of 99999999. (repository.pullRequest)' \
