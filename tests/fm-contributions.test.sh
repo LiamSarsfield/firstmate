@@ -1025,6 +1025,19 @@ test_real_gh_errors_drive_retry_and_summary() {
   jq -e '.records[0].error == "forge observation unavailable: core read: HTTP 503"' \
     "$home/data/delivery/contributions.json" >/dev/null || fail 'a line-leading HTTP status was not retained'
 
+  home=$(new_home real-gh-graphql-bare-http)
+  forge_home "$home"
+  wrap_forge "$home"
+  printf 'real-closing\n' > "$home/forge/fault"
+  out=$(with_home "$home" env FORGE_ERROR_TEXT='HTTP 503 (https://api.github.com/graphql)' "$ROOT/bin/fm-contributions.sh" poll) \
+    || fail 'poll failed on a message-less GraphQL HTTP status'
+  [ "$out" = 'contributions: observation unavailable for https://github.com/o/r/pull/8' ] \
+    || fail "a message-less GraphQL HTTP 503 did not print one unavailable line: $out"
+  [ "$(grep -cF 'pr view https://github.com/o/r/pull/8' "$home/forge/calls")" = 2 ] \
+    || fail 'a message-less GraphQL HTTP 503 was not retried exactly once'
+  jq -e '.records[0].error == "forge observation unavailable: closing read: HTTP 503"' \
+    "$home/data/delivery/contributions.json" >/dev/null || fail 'a message-less GraphQL HTTP status was not retained'
+
   home=$(new_home real-gh-exit-137)
   forge_home "$home"
   wrap_forge "$home"

@@ -227,7 +227,7 @@ write_record() { # task record-json-file
 FORGE_READS=(core comments reviews inline checks statuses repository closing issue-events)
 
 forge_http_status() { # stderr-file
-  sed -nE 's/^gh: HTTP ([0-9]{3})$/\1/p; s/^HTTP ([0-9]{3}):.*/\1/p; s/.*\(HTTP ([0-9]{3})\).*/\1/p' "$1" | head -n 1
+  sed -nE 's/^gh: HTTP ([0-9]{3})$/\1/p; s/^HTTP ([0-9]{3})[: ].*/\1/p; s/.*\(HTTP ([0-9]{3})\).*/\1/p' "$1" | head -n 1
 }
 
 forge_error_summary() { # stderr-file
