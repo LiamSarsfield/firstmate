@@ -919,7 +919,9 @@ test_real_gh_errors_drive_retry_and_summary() {
 
   for message in \
     'GraphQL: Could not resolve to a PullRequest with the number of 99999999. (repository.pullRequest)' \
-    "GraphQL: Could not resolve to a Repository with the name 'missing'. (repository)"; do
+    "GraphQL: Could not resolve to a Repository with the name 'missing'. (repository)" \
+    "GraphQL: Could not resolve to a Repository with the name 'openssl/openssl'. (repository)" \
+    "GraphQL: Could not resolve to a Repository with the name 'o/dnsmasq'. (repository)"; do
     home=$(new_home "real-gh-graphql-$(printf '%s' "$message" | shasum | cut -c1-8)")
     forge_home "$home"
     wrap_forge "$home"
@@ -951,6 +953,36 @@ test_real_gh_errors_drive_retry_and_summary() {
     [ "$(jq -r .records[0].error "$home/data/delivery/contributions.json" | mask_budget)" = "forge observation unavailable: $why" ] \
       || fail "HTTP $status lost its error"
   done
+
+  for status in 500 502 503 429; do
+    home=$(new_home "real-gh-bare-http-$status")
+    forge_home "$home"
+    wrap_forge "$home"
+    printf 'real-core\n' > "$home/forge/fault"
+    out=$(with_home "$home" env FORGE_ERROR_TEXT="gh: HTTP $status" "$ROOT/bin/fm-contributions.sh" poll) \
+      || fail "poll failed on bare gh HTTP $status"
+    why="core read exited 1 with Ns of budget left: gh: HTTP $status"
+    [ "$(printf '%s\n' "$out" | mask_budget)" = "contributions: observation unavailable for https://github.com/o/r/pull/8 - $why" ] \
+      || fail "bare gh HTTP $status did not print one unavailable line: $out"
+    calls=$(grep -cFx 'api repos/o/r/pulls/8' "$home/forge/calls")
+    [ "$calls" = 2 ] || fail "bare gh HTTP $status made $calls core reads, expected 2"
+    [ "$(jq -r .records[0].error "$home/data/delivery/contributions.json" | mask_budget)" = "forge observation unavailable: $why" ] \
+      || fail "bare gh HTTP $status lost its error"
+  done
+
+  home=$(new_home real-gh-bare-http-404)
+  forge_home "$home"
+  wrap_forge "$home"
+  printf 'real-core\n' > "$home/forge/fault"
+  out=$(with_home "$home" env FORGE_ERROR_TEXT='gh: HTTP 404' "$ROOT/bin/fm-contributions.sh" poll) \
+    || fail 'poll failed on bare gh HTTP 404'
+  why='core read exited 1 with Ns of budget left: gh: HTTP 404'
+  [ "$(printf '%s\n' "$out" | mask_budget)" = "contributions: observation unavailable for https://github.com/o/r/pull/8 - $why" ] \
+    || fail "bare gh HTTP 404 did not print one unavailable line: $out"
+  [ "$(grep -cFx 'api repos/o/r/pulls/8' "$home/forge/calls")" = 1 ] \
+    || fail 'bare gh HTTP 404 was retried'
+  [ "$(jq -r .records[0].error "$home/data/delivery/contributions.json" | mask_budget)" = "forge observation unavailable: $why" ] \
+    || fail 'bare gh HTTP 404 lost its error'
 
   home=$(new_home real-gh-http-line)
   forge_home "$home"

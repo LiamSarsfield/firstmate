@@ -228,7 +228,7 @@ write_record() { # task record-json-file
 }
 
 forge_http_status() { # stderr-file
-  sed -nE 's/^HTTP ([0-9]{3}):.*/\1/p; s/.*\(HTTP ([0-9]{3})\).*/\1/p' "$1" | head -n 1
+  sed -nE 's/^gh: HTTP ([0-9]{3})$/\1/p; s/^HTTP ([0-9]{3}):.*/\1/p; s/.*\(HTTP ([0-9]{3})\).*/\1/p' "$1" | head -n 1
 }
 
 forge_error_summary() { # stderr-file
@@ -236,6 +236,8 @@ forge_error_summary() { # stderr-file
   status=$(forge_http_status "$err")
   if [ -n "$status" ]; then
     printf 'HTTP %s\n' "$status"
+  elif grep -q '^GraphQL:' "$err"; then
+    printf 'request failed\n'
   elif grep -Fqi 'error connecting to' "$err" \
     && grep -Fqi 'check your internet connection or https://githubstatus.com' "$err"; then
     printf 'DNS error\n'
