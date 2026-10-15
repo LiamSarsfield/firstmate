@@ -20,8 +20,14 @@
 # because bin/fm-startup-network.sh compares that pid across its deferred
 # sweeps; a dead recorded pid is reclaimed and rewritten to this session's
 # anchor. A live line 1 outside the ancestry, owned only through the trusted
-# id, is rewritten to the anchor under the claim lock, so a later /clear re-key
-# in the same process is still proven by ancestry after the id changes.
+# id, is rewritten to the anchor under the claim lock and then the
+# lease-command lock, and task leases recorded against the old pid move to the
+# anchor in that same section (fm_lease_rekey_holder in bin/fm-lease-lib.sh).
+# A later /clear re-key in the same process is then still proven by ancestry
+# after the id changes, and a held lease stays live. When the lease-command
+# lock stays busy past LEASE_LOCK_WAIT seconds, the confirmation only refreshes
+# the sidecar, as for a line 1 in the ancestry, and a later acquisition
+# re-anchors.
 #
 # Usage: fm-lock.sh           acquire; exit 1 unless ownership is verified
 #        fm-lock.sh status    print holder and liveness; always exits 0.
@@ -69,15 +75,27 @@ rm -f "$probe" 2>/dev/null || {
 }
 # shellcheck source=bin/fm-wake-lib.sh
 . "$SCRIPT_DIR/fm-wake-lib.sh"
+# shellcheck source=bin/fm-lease-lib.sh
+. "$SCRIPT_DIR/fm-lease-lib.sh"
 CLAIM_LOCK="$STATE/.lock.acquire"
 CLAIM_LOCK_HELD=0
-REANCHOR=0
+LEASE_LOCK="$STATE/.fm-lease-command.lock"
+LEASE_LOCK_HELD=0
+LEASE_LOCK_WAIT=5
+# The live line-1 pid a same-session confirmation is moving off, or empty.
+REANCHOR=
 # PHASE 0: committed/none. 1: sidecar mutated, line 1 not written. 2: line 1 written, not verified.
 # KIND 0: no backup. 1: restore $LOCK_SESSION_PREV. 2: sidecar was absent.
 LOCK_SESSION_PHASE=0
 LOCK_SESSION_KIND=0
 LOCK_SESSION_PREV="$STATE/.lock-session.prev"
 LOCK_LINE_PRE=
+release_lease_lock() {
+  if [ "$LEASE_LOCK_HELD" -eq 1 ]; then
+    fm_lock_release "$LEASE_LOCK"
+    LEASE_LOCK_HELD=0
+  fi
+}
 release_claim_lock() {
   if [ "$CLAIM_LOCK_HELD" -eq 1 ]; then
     fm_lock_release "$CLAIM_LOCK"
@@ -105,6 +123,7 @@ commit_lock_session() {
 on_lock_exit() {
   restore_uncommitted_lock_session
   [ -n "$LOCK_LINE_PRE" ] && rm -f "$LOCK_LINE_PRE"
+  release_lease_lock
   release_claim_lock
 }
 trap on_lock_exit EXIT
@@ -156,10 +175,9 @@ publish_lock_session_or_die() {
 # This session already holds the lock, recorded as pid $1. Line 1 stays exactly
 # as recorded while that pid is alive and in this session's ancestry; only the
 # sidecar is refreshed, under the claim lock, so a /clear re-key inside the same
-# process replaces the old id. When the live recorded pid is outside the
-# ancestry, ownership rests on the trusted id alone, so REANCHOR is set and the
-# caller keeps the claim lock and rewrites line 1 to this session's anchor
-# through the guarded write below.
+# process replaces the old id. A live line 1 outside the ancestry is re-anchored
+# as the header describes: REANCHOR records it and the caller keeps both locks
+# for the guarded write below.
 # A same-session confirmation waits for the claim lock so the sidecar refresh
 # completes. After the wait, the lock is re-read and the sidecar is refreshed
 # only when this session still owns it; otherwise the claim lock is released
@@ -167,7 +185,7 @@ publish_lock_session_or_die() {
 # prior-session-sweep-is-finishing refusal is a takeover rule and does not
 # apply here.
 confirm_own_lock() {  # <recorded-pid>
-  local recorded waited=0
+  local recorded pids waited=0
   if [ "$CLAIM_LOCK_HELD" -ne 1 ]; then
     fm_lock_acquire_wait "$CLAIM_LOCK"
     CLAIM_LOCK_HELD=1
@@ -175,8 +193,11 @@ confirm_own_lock() {  # <recorded-pid>
   fi
   recorded=$(cat "$LOCK" 2>/dev/null || true)
   if [ "$recorded" = "$me" ] || fm_session_lock_owned_by_self "$STATE"; then
-    if [ "$recorded" != "$me" ] && outside_ancestry "$recorded"; then
-      REANCHOR=1
+    if [ "$recorded" != "$me" ] && pids=$(fm_harness_ancestry_pids) \
+      && ! fm_harness_pid_listed "$recorded" "$pids" \
+      && fm_lock_acquire_wait_max "$LEASE_LOCK" "$LEASE_LOCK_WAIT"; then
+      LEASE_LOCK_HELD=1
+      REANCHOR=$recorded
       return 0
     fi
     publish_lock_session_or_die
@@ -189,17 +210,6 @@ confirm_own_lock() {  # <recorded-pid>
     release_claim_lock
   fi
   return 1
-}
-
-outside_ancestry() {  # <pid>
-  local pids pid
-  pids=$(fm_harness_ancestry_pids) || return 1
-  while IFS= read -r pid; do
-    [ "$pid" = "$1" ] && return 1
-  done <<EOF
-$pids
-EOF
-  return 0
 }
 
 refuse_live_owner() {  # <recorded-pid>
@@ -218,7 +228,7 @@ if [ -f "$LOCK" ] && [ ! -L "$LOCK" ]; then
     confirm_own_lock "$old"
     old=$(cat "$LOCK" 2>/dev/null || true)
   fi
-  if [ "$REANCHOR" -eq 0 ] && fm_harness_pid_alive "$old"; then
+  if [ -z "$REANCHOR" ] && fm_harness_pid_alive "$old"; then
     refuse_live_owner "$old"
   fi
 fi
@@ -244,10 +254,12 @@ if [ -e "$LOCK" ] || [ -L "$LOCK" ]; then
     echo "error: session lock is unreadable; operate read-only until resolved" >&2
     exit 1
   }
-  if [ "$old" != "$me" ] && fm_harness_pid_alive "$old"; then
+  # A re-anchor decided above has held the claim lock since, so line 1 is the
+  # pid it recorded and needs no second verdict.
+  if [ -z "$REANCHOR" ] && [ "$old" != "$me" ] && fm_harness_pid_alive "$old"; then
     fm_session_lock_owned_by_self "$STATE" && confirm_own_lock "$old"
     old=$(cat "$LOCK" 2>/dev/null || true)
-    if [ "$REANCHOR" -eq 0 ] && [ "$old" != "$me" ] && fm_harness_pid_alive "$old"; then
+    if [ -z "$REANCHOR" ] && [ "$old" != "$me" ] && fm_harness_pid_alive "$old"; then
       refuse_live_owner "$old"
     fi
   fi
@@ -295,6 +307,10 @@ if [ ! -f "$LOCK" ] || [ -L "$LOCK" ] || [ "$written" != "$me" ]; then
   echo "error: session lock ownership verification failed; operate read-only until resolved" >&2
   exit 1
 fi
+if [ -n "$REANCHOR" ] && ! fm_lease_rekey_holder "$REANCHOR" "$me"; then
+  echo "warning: a task lease recorded against pid $REANCHOR could not be moved to pid $me, so it reads as stale" >&2
+fi
 commit_lock_session
+release_lease_lock
 release_claim_lock
 echo "lock acquired: harness pid $me"
