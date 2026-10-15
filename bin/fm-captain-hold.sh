@@ -151,7 +151,9 @@
 # `--carried-by` lets an origin that found a call another origin already holds
 # list that same task instead of a second row; the owner of every task that
 # matched it is recorded as an `<entry>:<owner>` pair in `decision_carriers=`
-# so later passes and `verify` apply the same check.
+# so later passes and `verify` apply the same check. `--carried-by` applies to
+# every task id in that invocation, so an origin whose calls are held by
+# different owners runs one `complete` per owner; the inventory is their union.
 # `verify` is read-only and is called by scout teardown, so teardown cannot
 # erase a source before this gate has succeeded: every recorded inventory
 # entry must still satisfy the same durability and origin checks as `complete`,
