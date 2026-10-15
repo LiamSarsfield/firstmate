@@ -875,8 +875,9 @@ refuse_self_inventory() {
 # origin was recorded, so completion can disclose the legacy fallback.
 # A carrier is the origin the call was held for when this origin found the same
 # call; an entry passes when its recorded origin is this origin or the carrier.
-verify_entry_durable() {  # <origin-or-empty> <entry> [carrier]; prints "<id> <how> <origin-state>"
-  local origin=$1 entry=$2 carrier=${3:-} resolved resolve_status=0 id how stored origin_state=unrecorded origin_id stored_id carrier_id
+# Only `complete` takes --carried-by, so only its refusal points at the option.
+verify_entry_durable() {  # <origin-or-empty> <entry> [carrier] [complete]; prints "<id> <how> <origin-state>"
+  local origin=$1 entry=$2 carrier=${3:-} from_complete=${4:-} resolved resolve_status=0 id how stored origin_state=unrecorded origin_id stored_id carrier_id
   # The origin task is never its own captain-call inventory: it is the work the
   # calls were found in, so accepting it would let a refused hold look recorded.
   if [ -n "$origin" ] && [ "$origin" != "$BINDING_ANY" ] && [ "$entry" = "$origin" ]; then
@@ -905,7 +906,9 @@ verify_entry_durable() {  # <origin-or-empty> <entry> [carrier]; prints "<id> <h
       stored_id=$(task_identity "$stored") || exit $?
       if [ "$stored_id" != "$origin_id" ]; then
         if [ -z "$carrier" ]; then
-          fail "captain-held task $id was held for origin $stored, not $origin; hold a task for $origin, list the right one, or pass --carried-by $stored when $origin found the same call"
+          [ -n "$from_complete" ] \
+            || fail "captain-held task $id was held for origin $stored, not $origin; hold a task for $origin or list the right one"
+          fail "captain-held task $id was held for origin $stored, not $origin; hold a task for $origin, list the right one, or, if $origin found the same call, see complete --carried-by"
         fi
         carrier_id=$(task_identity "$carrier") || exit $?
         [ "$stored_id" = "$carrier_id" ] \
@@ -1788,7 +1791,7 @@ command_complete() {
       if [ -n "$carried_by" ] && list_has_key "${supplied// /,}" "$entry"; then
         carrier=$carried_by
       fi
-      resolved=$(verify_entry_durable "$origin" "$entry" "$carrier") || exit $?
+      resolved=$(verify_entry_durable "$origin" "$entry" "$carrier" complete) || exit $?
       origin_state=${resolved##* }
       if [ "$origin_state" = carried ]; then
         carriers="${carriers}${carriers:+,}$entry:$carrier"
