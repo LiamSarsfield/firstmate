@@ -4193,17 +4193,11 @@ test_origin_is_never_its_own_inventory_entry() {
 # refuses a task held for a different origin. A hold recorded before that
 # record existed, or without --origin, still verifies and is flagged.
 test_complete_refuses_an_entry_held_for_another_origin() {
-  local home id other o out
+  local home id other out
   home=$(make_home origin-mismatch)
   id=sample-first-review
   other=sample-second-review
-  for o in "$id" "$other"; do
-    mkdir -p "$home/data/$o"
-    tasks_in "$home" add "$o" "Investigate $o" --kind scout --repo sample --start >/dev/null \
-      || fail "could not create the $o fixture"
-    write_origin_meta "$home" "$o"
-    printf 'done: report complete\n' > "$home/state/$o.status"
-  done
+  make_review_origins "$home" "$id" "$other"
   run_captain "$home" hold sample-other-call --title "Call for the second review" \
     --reason "captain must decide" --repo sample --origin "$other" >/dev/null \
     || fail "could not hold the call recorded for the second review"

@@ -140,18 +140,18 @@
 # open keyed status decision. With a non-empty inventory, every listed task is
 # verified durable (captain-held, or carrying a recorded resolution),
 # is never the origin itself, and, when `hold --origin` recorded one, was held
-# for this origin; a hold with no recorded origin is accepted on durability
-# alone and named in the output,
+# for this origin or for the owner named by `--carried-by <owner-origin-id>`;
+# a hold with no recorded origin is accepted on durability alone and named in
+# the output,
 # the inventory is unioned idempotently into the metadata, and every still-open
 # keyed status decision is transferred to its durable owner with a
 # `captain-held [key=...]` status close naming the inventory. Later review
 # passes may add ids. A post-teardown visual review can complete against the
 # surviving report and tasks without recreating task state.
-# When this origin found a call another origin already holds, `--carried-by
-# <owner-origin-id>` lists that same task instead of a second row: each listed
-# task must then have been held for this origin or for the named owner, and the
-# owner of every task that matched it is recorded as an `<entry>:<owner>` pair
-# in `decision_carriers=` so later passes and `verify` apply the same check.
+# `--carried-by` lets an origin that found a call another origin already holds
+# list that same task instead of a second row; the owner of every task that
+# matched it is recorded as an `<entry>:<owner>` pair in `decision_carriers=`
+# so later passes and `verify` apply the same check.
 # `verify` is read-only and is called by scout teardown, so teardown cannot
 # erase a source before this gate has succeeded: every recorded inventory
 # entry must still satisfy the same durability and origin checks as `complete`,
@@ -873,8 +873,8 @@ refuse_self_inventory() {
 # answered, which is not the same as an unknown entry and must not be spent
 # as absence. The result carries the attestation evidence and whether an
 # origin was recorded, so completion can disclose the legacy fallback.
-# A carrier names the origin the call was held for when this origin found the
-# same call; the entry then passes only when its recorded origin is that carrier.
+# A carrier is the origin the call was held for when this origin found the same
+# call; an entry passes when its recorded origin is this origin or the carrier.
 verify_entry_durable() {  # <origin-or-empty> <entry> [carrier]; prints "<id> <how> <origin-state>"
   local origin=$1 entry=$2 carrier=${3:-} resolved resolve_status=0 id how stored origin_state=unrecorded origin_id stored_id carrier_id
   # The origin task is never its own captain-call inventory: it is the work the
