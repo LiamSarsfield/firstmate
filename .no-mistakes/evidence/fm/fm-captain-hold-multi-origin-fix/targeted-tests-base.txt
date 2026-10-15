@@ -1,0 +1,5 @@
+### BASE (fc8972c) bin/fm-captain-hold.sh, same new tests
+ok - complete refuses an entry held for another origin and flags one with none recorded
+fm-captain-hold: no captain-held task --carried-by and no migrated hold for it in this home's configured backlog (data directory /tmp/fm-captain-hold.EJYurW/shared-call/data); the nearest legacy identity lane-b-decision---carried-by also resolves to nothing
+not ok - the second origin could not complete against the shared call
+exit=1

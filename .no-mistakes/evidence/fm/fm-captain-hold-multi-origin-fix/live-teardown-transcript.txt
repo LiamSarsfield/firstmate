@@ -1,0 +1,110 @@
+
+==================== BASE fc8972c: second scout cannot pass the teardown gate: lab /tmp/fm-lab.swfAFS ====================
+
+$ fm-captain-hold.sh hold shared-call --origin lane-a ...
+shared-call
+[exit 0]
+
+$ fm-captain-hold.sh complete lane-a shared-call
+complete: lane-a captain-call inventory reviewed (shared-call)
+[exit 0]
+
+$ fm-captain-hold.sh complete lane-b shared-call
+fm-captain-hold: captain-held task shared-call was held for origin lane-a, not lane-b; hold a task for lane-b or list the right one
+[exit 1]
+
+$ fm-teardown.sh lane-a
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /tmp/fm-lab.swfAFS
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  2 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  watcher supervision needs Stop-owned automatic recovery; inspect the hook registration and startup status before ending the turn.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+teardown lane-a complete (window firstmate:fm-lane-a, worktree /tmp/fm-lab.swfAFS/projects/missing-lane-a)
+Backlog: lane-a is closed in /tmp/fm-lab.swfAFS/data/backlog.md. Run bin/fm-tasks-axi.sh ready for dependency-cleared candidates, check date gates, and dispatch only work whose blockers are gone and date is due.
+[exit 0]
+
+$ fm-teardown.sh lane-b
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /tmp/fm-lab.swfAFS
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+fm-captain-hold: origin lane-b has no completed captain-call inventory
+REFUSED: scout task lane-b has not passed the captain-call completion gate.
+Inventory its report and any visual review through bin/fm-captain-hold.sh before teardown.
+[exit 1]
+
+$ fm-captain-hold.sh open shared-call
+[exit 0]
+
+$ tmux list-windows -t firstmate   # lab-private socket
+keep
+fm-lane-b
+
+$ cat data/backlog.md
+## In flight
+- [ ] lane-b - Investigate lane-b (repo: sample) (kind: scout) (since 2026-10-15)
+## Queued
+- [ ] shared-call - Choose shared behavior (repo: sample) (kind: captain) (since 2026-10-15) (hold: fm-hold-v1:dGhlIHNhbWUgY2FwdGFpbiBjaG9pY2Ugd2FzIGZvdW5kIGJ5IGJvdGggbGFuZXM=) (hold-kind: captain)
+  Captain hold set: 2026-10-15T20:24:39Z
+  Captain hold origin: lane-a
+
+  Origin: lane-a
+## Done
+- [x] lane-a - Investigate lane-a data/lane-a/report.md (repo: sample) (kind: scout) (reported 2026-10-15)
+
+==================== HEAD b551447: second scout completes with --carried-by and tears down: lab /tmp/fm-lab.CxmIdV ====================
+
+$ fm-captain-hold.sh hold shared-call --origin lane-a ...
+shared-call
+[exit 0]
+
+$ fm-captain-hold.sh complete lane-a shared-call
+complete: lane-a captain-call inventory reviewed (shared-call)
+[exit 0]
+
+$ fm-captain-hold.sh complete lane-b --carried-by lane-a shared-call
+complete: lane-b captain-call inventory reviewed (shared-call)
+[exit 0]
+
+$ fm-teardown.sh lane-a
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /tmp/fm-lab.CxmIdV
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+●  WATCHER DOWN - SUPERVISION IS OFF
+●  2 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+●  This is a supervision warning only; the guarded operation WILL still run.
+●  watcher supervision needs Stop-owned automatic recovery; inspect the hook registration and startup status before ending the turn.
+●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+teardown lane-a complete (window firstmate:fm-lane-a, worktree /tmp/fm-lab.CxmIdV/projects/missing-lane-a)
+Backlog: lane-a is closed in /tmp/fm-lab.CxmIdV/data/backlog.md. Run bin/fm-tasks-axi.sh ready for dependency-cleared candidates, check date gates, and dispatch only work whose blockers are gone and date is due.
+[exit 0]
+
+$ fm-teardown.sh lane-b
+fm-gate-refuse: gate agent lifecycle permitted only against lab home /tmp/fm-lab.CxmIdV
+WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+teardown lane-b complete (window firstmate:fm-lane-b, worktree /tmp/fm-lab.CxmIdV/projects/missing-lane-b)
+Backlog: lane-b is closed in /tmp/fm-lab.CxmIdV/data/backlog.md. Run bin/fm-tasks-axi.sh ready for dependency-cleared candidates, check date gates, and dispatch only work whose blockers are gone and date is due.
+[exit 0]
+
+$ fm-captain-hold.sh open shared-call
+[exit 0]
+
+$ tmux list-windows -t firstmate   # lab-private socket
+keep
+
+$ cat data/backlog.md
+## In flight
+## Queued
+- [ ] shared-call - Choose shared behavior (repo: sample) (kind: captain) (since 2026-10-15) (hold: fm-hold-v1:dGhlIHNhbWUgY2FwdGFpbiBjaG9pY2Ugd2FzIGZvdW5kIGJ5IGJvdGggbGFuZXM=) (hold-kind: captain)
+  Captain hold set: 2026-10-15T20:24:46Z
+  Captain hold origin: lane-a
+
+  Origin: lane-a
+## Done
+- [x] lane-b - Investigate lane-b data/lane-b/report.md (repo: sample) (kind: scout) (reported 2026-10-15)
+- [x] lane-a - Investigate lane-a data/lane-a/report.md (repo: sample) (kind: scout) (reported 2026-10-15)
+
+==================== CLEANUP ====================
+removed lab home: /tmp/fm-lab.swfAFS
+removed lab home: /tmp/fm-lab.CxmIdV

@@ -1,0 +1,5 @@
+### HEAD (b5514474e0b3316adb571a4dc98664b295fbed95) bin/fm-captain-hold.sh
+ok - complete refuses an entry held for another origin and flags one with none recorded
+ok - two origins complete against one still-open shared call and both verify
+ok - complete --carried-by refuses an owner the call was not held for
+exit=0
