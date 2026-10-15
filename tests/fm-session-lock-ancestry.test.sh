@@ -703,12 +703,14 @@ arm_count() {  # <dir>
 }
 
 # The recycled chain must still be treated as the owner: arm, no diagnostic,
-# lock accepted, line 1 untouched while the recorded pid lives, sidecar bytes
-# untouched. An owned actionable close records two arm invocations - the
-# foreground arm plus the handling successor the hook starts before the rewake -
-# so the cumulative <expected-arms> grows by two for every owned phase.
-expect_phase_owned() {  # <dir> <n> <expected-arms> <expected-lock-pid> <label>
-  local dir=$1 n=$2 arms=$3 lock_pid=$4 label=$5
+# lock accepted, line 1 naming <expected-lock-pid>, and the sidecar either
+# byte-identical to the one the owner wrote or, when <expected-session-id> is
+# given, re-keyed to that id. An owned actionable close records two arm
+# invocations - the foreground arm plus the handling successor the hook starts
+# before the rewake - so the cumulative <expected-arms> grows by two for every
+# owned phase.
+expect_phase_owned() {  # <dir> <n> <expected-arms> <expected-lock-pid> <label> [<expected-session-id>]
+  local dir=$1 n=$2 arms=$3 lock_pid=$4 label=$5 session_id=${6:-}
   expect_code 2 "$(phase_value "$dir" "$n" hook.rc)" "$label: the Stop auto-arm did not rewake"
   [ "$(arm_count "$dir")" = "$arms" ] || fail "$label: expected $arms arm(s), got $(arm_count "$dir")"
   [ "$(epoch_outcome "$dir")" = rewake ] || fail "$label: no rewake claim was recorded, got: $(epoch_outcome "$dir")"
@@ -719,8 +721,13 @@ expect_phase_owned() {  # <dir> <n> <expected-arms> <expected-lock-pid> <label>
   expect_code 0 "$(phase_value "$dir" "$n" lock.rc)" "$label: fm-lock.sh refused the session's own lock: $(cat "$dir/state/phase-$n/lock.out")"
   [ "$(phase_value "$dir" "$n" lock-after)" = "$lock_pid" ] \
     || fail "$label: lock line 1 is $(phase_value "$dir" "$n" lock-after), expected $lock_pid"
-  cmp -s "$dir/state/phase-$n/session-after" "$dir/sidecar-initial" \
-    || fail "$label: the session sidecar is not byte-identical to the one the owner wrote"
+  if [ -n "$session_id" ]; then
+    [ "$(phase_value "$dir" "$n" session-after)" = "$session_id" ] \
+      || fail "$label: the session sidecar names $(phase_value "$dir" "$n" session-after), expected $session_id"
+  else
+    cmp -s "$dir/state/phase-$n/session-after" "$dir/sidecar-initial" \
+      || fail "$label: the session sidecar is not byte-identical to the one the owner wrote"
+  fi
 }
 
 # Not the owner: no arm, the guard's foreign-owner diagnostic naming the live
@@ -776,38 +783,37 @@ test_e2e_background_session_keeps_its_lock_across_a_recycled_chain() {
   [ "$(ps -o ppid= -p "$ptyhost" 2>/dev/null | tr -d ' ')" = 1 ] || fail "the pty-host was not reparented to init after the daemon ended"
   kill -0 "$frontend" 2>/dev/null || fail "the front-end died with the daemon, so the recycled case cannot be exercised"
 
-  # Phase 2: the same session id over the broken chain - the reported drift.
-  fire_phase "$dir" 2 'export CLAUDE_CODE_SESSION_ID=S1; export CLAUDE_PID=$$'
+  # Phases 2-4: before the spare proves anything, a different id, the right id
+  # from a CLAUDE_PID outside the run, and no id at all are each a non-owner
+  # over the broken chain.
+  fire_phase "$dir" 2 'export CLAUDE_CODE_SESSION_ID=S2; export CLAUDE_PID=$$'
   if grep -qx "$frontend" "$dir/state/phase-2/ancestry"; then
-    fail "the recycled chain still reached the front-end, so this phase proves nothing"
+    fail "the recycled chain still reached the front-end, so these phases prove nothing"
   fi
   grep -qx "$spare" "$dir/state/phase-2/ancestry" || fail "the hook's ancestry lost its own spare"
-  expect_phase_owned "$dir" 2 4 "$frontend" "recycled chain, same session"
+  expect_phase_foreign "$dir" 2 2 "$frontend" "recycled chain, different session"
+  fire_phase "$dir" 3 "export CLAUDE_CODE_SESSION_ID=S1; export CLAUDE_PID=$frontend"
+  expect_phase_foreign "$dir" 3 2 "$frontend" "recycled chain, untrusted id"
+  fire_phase "$dir" 4 ''
+  expect_phase_foreign "$dir" 4 2 "$frontend" "recycled chain, no id"
 
-  # Phases 3-5: a different id, the right id from a CLAUDE_PID outside the run,
-  # and no id at all are each a non-owner over the same broken chain.
-  fire_phase "$dir" 3 'export CLAUDE_CODE_SESSION_ID=S2; export CLAUDE_PID=$$'
-  expect_phase_foreign "$dir" 3 4 "$frontend" "recycled chain, different session"
-  fire_phase "$dir" 4 "export CLAUDE_CODE_SESSION_ID=S1; export CLAUDE_PID=$frontend"
-  expect_phase_foreign "$dir" 4 4 "$frontend" "recycled chain, untrusted id"
-  fire_phase "$dir" 5 ''
-  expect_phase_foreign "$dir" 5 4 "$frontend" "recycled chain, no id"
-
-  # Phase 6: the front-end exits; the same session reclaims its dead anchor
-  # onto the spare - the model-loop process - not onto the outermost pty-host.
-  : > "$dir/state/stop-frontend"
-  i=0
-  while [ "$i" -lt 200 ] && kill -0 "$frontend" 2>/dev/null; do
-    sleep 0.05
-    i=$((i + 1))
-  done
-  kill -0 "$frontend" 2>/dev/null && fail "the front-end did not exit"
-  fire_phase "$dir" 6 'export CLAUDE_CODE_SESSION_ID=S1; export CLAUDE_PID=$$'
-  expect_phase_owned "$dir" 6 6 "$spare" "dead front-end, same session"
+  # Phase 5: the same session id over the broken chain - the reported drift. The
+  # confirmation re-anchors line 1 from the live non-ancestor front-end onto the
+  # spare - the model-loop process - not onto the outermost pty-host.
+  fire_phase "$dir" 5 'export CLAUDE_CODE_SESSION_ID=S1; export CLAUDE_PID=$$'
+  expect_phase_owned "$dir" 5 4 "$spare" "recycled chain, same session"
   [ "$spare" != "$ptyhost" ] || fail "fixture collapsed the spare into the pty-host"
+  kill -0 "$frontend" 2>/dev/null || fail "the front-end exited, so the re-anchor was not over a live owner"
 
+  # Phase 6: /clear - the same spare under a new id while the front-end that
+  # first recorded the lock is still alive. Ancestry still proves ownership and
+  # the sidecar is re-keyed.
+  fire_phase "$dir" 6 'export CLAUDE_CODE_SESSION_ID=S2; export CLAUDE_PID=$$'
+  expect_phase_owned "$dir" 6 6 "$spare" "same process after a session-id change" S2
+
+  : > "$dir/state/stop-frontend"
   : > "$dir/state/stop-spare"
-  pass "session-lock e2e: a background session keeps its lock and its supervision across a recycled helper chain"
+  pass "session-lock e2e: a background session keeps its lock and its supervision across a recycled helper chain and a same-process session-id change"
 }
 
 # A same-session confirmation must refresh a /clear re-key even while another

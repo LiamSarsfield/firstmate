@@ -16,9 +16,12 @@
 # confirmed-own acquisition, including the early already-mine exit that waits
 # for the claim lock, removed when the acquiring session proves no trusted id,
 # and left byte-identical when it already names that id. A same-session
-# confirmation never rewrites line 1 while the recorded pid is alive, because
-# bin/fm-startup-network.sh compares that pid across its deferred sweeps; a dead
-# recorded pid is reclaimed and rewritten to this session's anchor.
+# confirmation keeps a live line 1 that is in this session's harness ancestry,
+# because bin/fm-startup-network.sh compares that pid across its deferred
+# sweeps; a dead recorded pid is reclaimed and rewritten to this session's
+# anchor. A live line 1 outside the ancestry, owned only through the trusted
+# id, is rewritten to the anchor under the claim lock, so a later /clear re-key
+# in the same process is still proven by ancestry after the id changes.
 #
 # Usage: fm-lock.sh           acquire; exit 1 unless ownership is verified
 #        fm-lock.sh status    print holder and liveness; always exits 0.
@@ -68,6 +71,7 @@ rm -f "$probe" 2>/dev/null || {
 . "$SCRIPT_DIR/fm-wake-lib.sh"
 CLAIM_LOCK="$STATE/.lock.acquire"
 CLAIM_LOCK_HELD=0
+REANCHOR=0
 # PHASE 0: committed/none. 1: sidecar mutated, line 1 not written. 2: line 1 written, not verified.
 # KIND 0: no backup. 1: restore $LOCK_SESSION_PREV. 2: sidecar was absent.
 LOCK_SESSION_PHASE=0
@@ -150,8 +154,12 @@ publish_lock_session_or_die() {
 }
 
 # This session already holds the lock, recorded as pid $1. Line 1 stays exactly
-# as recorded while that pid is alive; only the sidecar is refreshed, under the
-# claim lock, so a /clear re-key inside the same process replaces the old id.
+# as recorded while that pid is alive and in this session's ancestry; only the
+# sidecar is refreshed, under the claim lock, so a /clear re-key inside the same
+# process replaces the old id. When the live recorded pid is outside the
+# ancestry, ownership rests on the trusted id alone, so REANCHOR is set and the
+# caller keeps the claim lock and rewrites line 1 to this session's anchor
+# through the guarded write below.
 # A same-session confirmation waits for the claim lock so the sidecar refresh
 # completes. After the wait, the lock is re-read and the sidecar is refreshed
 # only when this session still owns it; otherwise the claim lock is released
@@ -167,6 +175,10 @@ confirm_own_lock() {  # <recorded-pid>
   fi
   recorded=$(cat "$LOCK" 2>/dev/null || true)
   if [ "$recorded" = "$me" ] || fm_session_lock_owned_by_self "$STATE"; then
+    if [ "$recorded" != "$me" ] && outside_ancestry "$recorded"; then
+      REANCHOR=1
+      return 0
+    fi
     publish_lock_session_or_die
     commit_lock_session
     release_claim_lock
@@ -177,6 +189,17 @@ confirm_own_lock() {  # <recorded-pid>
     release_claim_lock
   fi
   return 1
+}
+
+outside_ancestry() {  # <pid>
+  local pids pid
+  pids=$(fm_harness_ancestry_pids) || return 1
+  while IFS= read -r pid; do
+    [ "$pid" = "$1" ] && return 1
+  done <<EOF
+$pids
+EOF
+  return 0
 }
 
 refuse_live_owner() {  # <recorded-pid>
@@ -195,20 +218,22 @@ if [ -f "$LOCK" ] && [ ! -L "$LOCK" ]; then
     confirm_own_lock "$old"
     old=$(cat "$LOCK" 2>/dev/null || true)
   fi
-  if fm_harness_pid_alive "$old"; then
+  if [ "$REANCHOR" -eq 0 ] && fm_harness_pid_alive "$old"; then
     refuse_live_owner "$old"
   fi
 fi
 
-if ! fm_lock_try_acquire "$CLAIM_LOCK"; then
-  sweep_pid=$(sed -n 's/^pid=//p' "$STATE/.startup-network.status" 2>/dev/null | tail -1)
-  if [ -n "${FM_LOCK_HELD_PID:-}" ] && [ "$FM_LOCK_HELD_PID" = "$sweep_pid" ]; then
-    echo "error: the prior session's bounded startup sweep is finishing; operate read-only until it releases the fleet lock" >&2
-    exit 1
+if [ "$CLAIM_LOCK_HELD" -ne 1 ]; then
+  if ! fm_lock_try_acquire "$CLAIM_LOCK"; then
+    sweep_pid=$(sed -n 's/^pid=//p' "$STATE/.startup-network.status" 2>/dev/null | tail -1)
+    if [ -n "${FM_LOCK_HELD_PID:-}" ] && [ "$FM_LOCK_HELD_PID" = "$sweep_pid" ]; then
+      echo "error: the prior session's bounded startup sweep is finishing; operate read-only until it releases the fleet lock" >&2
+      exit 1
+    fi
+    fm_lock_acquire_wait "$CLAIM_LOCK"
   fi
-  fm_lock_acquire_wait "$CLAIM_LOCK"
+  CLAIM_LOCK_HELD=1
 fi
-CLAIM_LOCK_HELD=1
 
 if [ -e "$LOCK" ] || [ -L "$LOCK" ]; then
   if [ ! -f "$LOCK" ] || [ -L "$LOCK" ]; then
@@ -222,7 +247,7 @@ if [ -e "$LOCK" ] || [ -L "$LOCK" ]; then
   if [ "$old" != "$me" ] && fm_harness_pid_alive "$old"; then
     fm_session_lock_owned_by_self "$STATE" && confirm_own_lock "$old"
     old=$(cat "$LOCK" 2>/dev/null || true)
-    if [ "$old" != "$me" ] && fm_harness_pid_alive "$old"; then
+    if [ "$REANCHOR" -eq 0 ] && [ "$old" != "$me" ] && fm_harness_pid_alive "$old"; then
       refuse_live_owner "$old"
     fi
   fi
