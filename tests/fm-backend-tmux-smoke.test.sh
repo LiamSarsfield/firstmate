@@ -195,12 +195,9 @@ for indexed_target in "$SESSION:$LIVE_WINDOW_INDEX" firstmate:0; do
 done
 pass "real tmux: fm_backend_target_exists accepts window indexes including firstmate:0"
 
-for pane_target in "$SESSION:$WINDOW.$LIVE_PANE_INDEX" \
-  "$SESSION:$LIVE_WINDOW_INDEX.$LIVE_PANE_INDEX"; do
-  fm_backend_target_exists tmux "$pane_target" \
-    || fail "fm_backend_target_exists rejected live pane target $pane_target"
-done
-pass "real tmux: fm_backend_target_exists accepts name.pane and index.pane targets"
+fm_backend_target_exists tmux "$SESSION:$LIVE_WINDOW_INDEX.$LIVE_PANE_INDEX" \
+  || fail "fm_backend_target_exists rejected live index.pane target"
+pass "real tmux: fm_backend_target_exists accepts index.pane targets"
 
 for exact_target in "$SESSION" "=$SESSION:=$WINDOW"; do
   fm_backend_target_exists tmux "$exact_target" \
@@ -239,6 +236,21 @@ sleep 0.1
 [ ! -e "$SHIM_DIR/key-capture" ] \
   || fail "fm_backend_tmux_send_key delivered a key to the prefix neighbor"
 pass "real tmux: fm_backend_tmux_send_key withholds a key from a gone prefix target"
+
+# A gone dotted task window must not resolve as a pane of its undotted neighbor.
+tmux new-window -d -t "$SESSION:" -n fm-v1 \
+  || fail "real tmux: undotted neighbor window failed"
+DOTTED_WINDOW_ID=$(tmux new-window -d -P -F '#{window_id}' -t "$SESSION:" -n fm-v1.0) \
+  || fail "real tmux: dotted window failed"
+tmux kill-window -t "$DOTTED_WINDOW_ID" \
+  || fail "real tmux: could not remove the dotted window"
+if fm_backend_target_exists tmux "$SESSION:fm-v1.0"; then
+  fail "fm_backend_target_exists reported a gone dotted window present beside fm-v1"
+fi
+if fm_backend_tmux_send_key "$SESSION:fm-v1.0" X; then
+  fail "fm_backend_tmux_send_key accepted a gone dotted target"
+fi
+pass "real tmux: a gone dotted window reads absent beside its undotted neighbor"
 
 # --- kill and recovery-grade missing-window classification ------------------
 

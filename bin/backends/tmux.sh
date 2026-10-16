@@ -216,6 +216,7 @@ fm_backend_tmux_target_exists() {  # <target>
           base=${selector%.*}
           pane_index=${selector##*.}
           [ -n "$base" ] && [ -n "$pane_index" ] || return 1
+          case "$base" in *[!0-9]*) return 1 ;; esac
           case "$pane_index" in *[!0-9]*) return 1 ;; esac
           window_id=$(fm_backend_tmux_window_id "$session" "$base") || return 1
           tmux list-panes -t "$window_id" -F '#{pane_index}' 2>/dev/null \

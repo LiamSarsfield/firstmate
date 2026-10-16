@@ -953,7 +953,7 @@ fm_backend_composer_state() {  # <backend> <target> [expected-label] -> empty|pe
 # fast alive/dead read (recovery digests, the session-start fleet digest) do
 # not re-derive it inline.
 # For tmux, TARGET accepts `%pane`, `@window`, `session:@window`, a bare exact
-# session, and `session:window`, `session:index`, or either window selector with
+# session, and `session:window`, `session:index`, or a window index with
 # a numeric `.pane` suffix; optional `=session:=window` markers stay exact too.
 fm_backend_target_exists() {  # <backend> <target> [expected-label]
   local backend=$1 target=$2 expected_label=${3:-} session pane
