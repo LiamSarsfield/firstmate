@@ -283,7 +283,10 @@ fi
 # written, a failure restores the previous sidecar. If line 1 is written but
 # not yet verified, a failure removes the sidecar and leaves the lock
 # ancestry-only. After line 1 verifies as this session's anchor, a later
-# signal leaves the published pair in place.
+# signal leaves the published pair in place, except on the re-anchor path:
+# there a HUP, INT, or TERM during the lease move or the bounded
+# .claude-autoarm.lock wait, before commit_lock_session, still runs
+# restore_uncommitted_lock_session with phase 2 and removes the sidecar.
 publish_lock_session_or_die
 if [ -f "$LOCK" ]; then
   LOCK_LINE_PRE=$(mktemp "$STATE/.lock.pre.XXXXXX") || {

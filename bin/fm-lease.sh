@@ -123,7 +123,8 @@ case "$CMD" in
     # shell; without a matching session lock the resulting lease is stale.
     # A pinned holder that is alive but no longer line 1 was moved off by a
     # same-session re-anchor (bin/fm-lock.sh), since another session takes the
-    # lock only from a dead owner, so the claim records the live line 1.
+    # lock only from a holder that is no longer a live harness, so the claim
+    # records the live line 1.
     HOLDER_PID=${FM_LEASE_HOLDER_PID:-}
     case "$HOLDER_PID" in *[!0-9]*) HOLDER_PID= ;; esac
     LOCK_PID=$(head -n 1 "$STATE/.lock" 2>/dev/null | tr -cd '0-9' || true)
