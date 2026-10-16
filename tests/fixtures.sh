@@ -130,7 +130,11 @@ case "${1:-}" in
     printf '%s\n' "$name" > "$window_file"
     exit 0
     ;;
-  has-session|new-session|kill-window|set-window-option) exit 0 ;;
+  kill-window)
+    : > "$window_file"
+    exit 0
+    ;;
+  has-session|new-session|set-window-option) exit 0 ;;
   send-keys)
     if [ -n "${FM_FAKE_LAUNCH_LOG:-}" ]; then
       prev=

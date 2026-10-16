@@ -528,7 +528,9 @@ Test cleanup must use the guarded path in [`docs/cmux-backend.md`](cmux-backend.
 The `/afk` sub-supervisor injects escalation digests into firstmate's own pane independently of where new task endpoints are spawned.
 It currently supports only `tmux` and `herdr` supervisor panes.
 
-Set `FM_SUPERVISOR_BACKEND=tmux|herdr` and `FM_SUPERVISOR_TARGET=<target>` to override both axes explicitly; for herdr the target is `"<session>:<pane-id>"`.
+Set `FM_SUPERVISOR_BACKEND=tmux|herdr` and `FM_SUPERVISOR_TARGET=<target>` to override both axes explicitly.
+For tmux, accepted targets are `%pane-id`, `@window-id`, `session:@window-id`, a bare session, `session:window-name`, `session:index`, `session:window-name.pane-index`, `session:index.pane-index`, and the supported `=session:=window` exact-marker forms; the `fm_backend_target_exists` header in `bin/fm-backend.sh` owns this grammar.
+For herdr, the target is `"<session>:<pane-id>"`.
 Without overrides, backend detection uses `$TMUX_PANE` first, then `HERDR_ENV=1` with `HERDR_PANE_ID`, then falls back to `tmux`.
 
 That keeps a tmux pane nested inside herdr on the tmux transport, matching the runtime backend's innermost-first rule.
@@ -2594,7 +2596,7 @@ FM_SEND_SETTLE=1        # seconds fm-send waits after a successful typed-plane s
 FM_PENDING_REPLY_GRACE_SECS=120   # seconds after the request turn completes without a correlated parent report before its one recovery repost is eligible, and after the recovery turn completes before the missed-report escalation is eligible; never counted from delivery
 # sub-supervisor (bin/fm-supervise-daemon.sh); presence-gated via /afk
 FM_SUPERVISOR_BACKEND=             # optional supervisor pane backend override; tmux/herdr only, otherwise detects $TMUX_PANE then HERDR_ENV/HERDR_PANE_ID before tmux fallback
-FM_SUPERVISOR_TARGET=              # optional supervisor pane target override; tmux target or herdr <session>:<pane-id>, otherwise auto-detected
+FM_SUPERVISOR_TARGET=              # optional supervisor pane target override; tmux uses the exact forms owned by fm_backend_target_exists in bin/fm-backend.sh, herdr uses <session>:<pane-id>, otherwise auto-detected
 FM_INJECT_SKIP=heartbeat           # |-prefixes force-self-handled bypassing classification; empty disables
 FM_ESCALATE_BATCH_SECS=90          # buffer window for batched escalation digests; 0 = flush immediately
 FM_MAX_DEFER_SECS=300              # max buffered escalation age before retry plus wedge alarm; 0 disables
