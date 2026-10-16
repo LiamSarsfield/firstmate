@@ -378,6 +378,20 @@ FIXED same-session id re-anchors the lock onto its own process; a different id i
 COMPLETE
 ```
 
+The auto-arm rewake move and the lease claim pinned before a re-anchor ran on 2026-10-16 on Linux with GNU bash 5.3.9 as the fake harness interpreter:
+
+```sh
+bin/fm-test-run.sh tests/fm-session-lock-ancestry.test.sh tests/fm-branch-supervision.test.sh
+```
+
+Observed output, bounded to the lines that coverage adds:
+
+```text
+ok - session-lock: a re-anchor during a rewake turn keeps the mid-turn auto-arm proof healthy
+ok - a claim pinned before a re-anchor records the live lock holder; a dead pin stays stale
+FM_TEST_SUMMARY total=2 failed=0 skipped_gate=0 duration_ms=43472
+```
+
 No live unattended Claude background session ran on the verifying machine: that topology is documented by the real process listings in issues #3902, #2314, #3398, and #4066, and the coverage above is the structural predicate plus those executable fixtures, not a live pass.
 [`sessionstart-nudge.md`](../sessionstart-nudge.md#shared-wrapper-and-safety) owns the nudge wrapper's separate ancestry check and its redundant-nudge behavior after helper-chain recycling.
 `tests/fm-watch-arm.test.sh` runs real watcher and arm cycles against durable on-disk state to verify that a delivered reason survives until post-handling acknowledgement and stops replaying after acknowledgement, while an unrelated queue append cannot make a watcher cycle that delivered nothing look successful.
