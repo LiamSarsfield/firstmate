@@ -329,11 +329,11 @@ EOF
 # The question is deliberately "does the lock still name the session that asked
 # for this work?", not "is that session still alive". The hazard being closed is
 # a SECOND session sweeping concurrently. bin/fm-lock.sh rewrites that pid with
-# its own anchor only when a different session takes the lock from a dead
-# recorded holder, or when the same session re-anchors a live recorded pid
-# outside its ancestry. An unchanged value therefore proves no one else owns the
-# sweeps, which is the whole guarantee; a re-anchor also fails closed, which
-# only defers idempotent work. Requiring liveness instead would refuse to finish work
+# its own anchor whenever the recorded holder is no longer a live harness, or
+# when the same session re-anchors a live recorded pid outside its ancestry.
+# An unchanged value therefore proves no one else owns the sweeps, which is the
+# whole guarantee; a re-anchor also fails closed, which only defers idempotent
+# work. Requiring liveness instead would refuse to finish work
 # nobody else has claimed, and the sweeps are idempotent, so finishing it is
 # strictly better than abandoning it. A missing, unreadable, or replaced lock all
 # fail closed to the read-only probe.
