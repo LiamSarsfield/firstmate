@@ -56,11 +56,14 @@ fm_backend_source tmux || fail "fm_backend_source tmux failed"
 SESSION="smoke"
 WINDOW="fm-smoke1"
 TARGET="$SESSION:$WINDOW"
+OTHER_SESSION="smoke-other"
 
 # --- create session ----------------------------------------------------------
 
 tmux new-session -d -s "$SESSION" -x 200 -y 50 \
   || fail "real tmux: new-session failed"
+tmux new-session -d -s "$OTHER_SESSION" -x 200 -y 50 \
+  || fail "real tmux: second new-session failed"
 fm_backend_tmux_create_task "$SESSION" "$WINDOW" "$HOME" \
   || fail "fm_backend_tmux_create_task failed to create the task window"
 tmux list-windows -t "$SESSION" -F '#{window_name}' | grep -qx "$WINDOW" \
@@ -156,6 +159,18 @@ if fm_backend_tmux_resolve_bare_selector "no-such-window-xyz" 2>/dev/null; then
 fi
 pass "real tmux: fm_backend_tmux_resolve_bare_selector fails for a window that does not exist"
 
+# --- target_exists requires exact window and pane membership ----------------
+
+fm_backend_target_exists tmux "$TARGET" \
+  || fail "fm_backend_target_exists should report the existing window present"
+pass "real tmux: fm_backend_target_exists finds an existing window"
+
+LIVE_PANE=$(tmux display-message -p -t "$TARGET" '#{pane_id}') \
+  || fail "could not read the existing pane id"
+fm_backend_target_exists tmux "$LIVE_PANE" \
+  || fail "fm_backend_target_exists should report the existing pane present"
+pass "real tmux: fm_backend_target_exists finds an existing pane"
+
 # --- kill and recovery-grade missing-window classification ------------------
 
 fm_backend_tmux_kill "$TARGET"
@@ -165,6 +180,18 @@ fi
 state=$(fm_backend_agent_state tmux "$TARGET")
 [ "$state" = missing ] \
   || fail "a real missing window in a readable session should classify as missing, got '$state'"
+if fm_backend_target_exists tmux "$TARGET"; then
+  fail "fm_backend_target_exists still reports the killed window present"
+fi
+pass "real tmux: fm_backend_target_exists rejects a killed window while another session stays alive"
+
+if fm_backend_target_exists tmux "smoke-missing:$WINDOW"; then
+  fail "fm_backend_target_exists reports a window in a missing session present"
+fi
+tmux has-session -t "$OTHER_SESSION" \
+  || fail "the second session should remain alive while missing-session membership is checked"
+pass "real tmux: fm_backend_target_exists rejects a missing session while another session stays alive"
+
 # Best-effort contract: killing an already-gone window must not error.
 fm_backend_tmux_kill "$TARGET" || fail "fm_backend_tmux_kill on an already-dead target must stay best-effort (never fail)"
 pass "real tmux: kill removes the window and the readable session inventory authoritatively classifies it missing"
