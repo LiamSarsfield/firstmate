@@ -1,0 +1,26 @@
+# Scenario: away-daemon supervisor-target startup validation (FM_SUPERVISOR_BACKEND=tmux FM_SUPERVISOR_TARGET=<t> timeout -s TERM 5 bin/fm-supervise-daemon.sh)
+# rc=1 + 'startup failed' = refused at startup; rc=124 + 'daemon starting' = passed validation and ran until timeout TERM
+# gone: lab:fm-gone, ghost:fm-x (missing session), %2 (stale pane id), @2 (stale window id), lab:fm-t1 (neighbor fm-t10), lab:fm-v1.0 (neighbor fm-v1)
+# live: firstmate:0 (the shipped default), %0, lab:0.0 (session:index.pane), firstmate:primary
+## NEW
+lab:fm-gone    rc=1   startup failed: target 'lab:fm-gone' not found (backend=tmux) | stderr: error: supervisor target 'lab:fm-gone' does not resolve to a tmux pane; set FM_SUPERVISOR_TARGET
+ghost:fm-x     rc=1   startup failed: target 'ghost:fm-x' not found (backend=tmux) | stderr: error: supervisor target 'ghost:fm-x' does not resolve to a tmux pane; set FM_SUPERVISOR_TARGET
+%2             rc=1   startup failed: target '%2' not found (backend=tmux) | stderr: error: supervisor target '%2' does not resolve to a tmux pane; set FM_SUPERVISOR_TARGET
+@2             rc=1   startup failed: target '@2' not found (backend=tmux) | stderr: error: supervisor target '@2' does not resolve to a tmux pane; set FM_SUPERVISOR_TARGET
+lab:fm-t1      rc=1   startup failed: target 'lab:fm-t1' not found (backend=tmux) | stderr: error: supervisor target 'lab:fm-t1' does not resolve to a tmux pane; set FM_SUPERVISOR_TARGET
+lab:fm-v1.0    rc=1   startup failed: target 'lab:fm-v1.0' not found (backend=tmux) | stderr: error: supervisor target 'lab:fm-v1.0' does not resolve to a tmux pane; set FM_SUPERVISOR_TARGET
+firstmate:0    rc=124 daemon starting (pid 3842152); target=firstmate:0 | stderr: Terminated                 sleep 1
+%0             rc=124 daemon starting (pid 3845469); target=%0 | stderr: Terminated                 sleep 1
+lab:0.0        rc=124 daemon starting (pid 3849025); target=lab:0.0 | stderr: Terminated                 sleep 1
+firstmate:primary rc=124 daemon starting (pid 3853698); target=firstmate:primary | stderr: Terminated                 sleep 1
+## BASE
+lab:fm-gone    rc=124 daemon starting (pid 3858981); target=lab:fm-gone | stderr: Terminated                 sleep 1
+ghost:fm-x     rc=124 daemon starting (pid 3862482); target=ghost:fm-x | stderr: Terminated                 sleep 1
+%2             rc=124 daemon starting (pid 3867216); target=%2 | stderr: Terminated                 sleep 1
+@2             rc=124 daemon starting (pid 3872649); target=@2 | stderr: Terminated                 sleep 1
+lab:fm-t1      rc=124 daemon starting (pid 3876190); target=lab:fm-t1 | stderr: Terminated                 sleep 1
+lab:fm-v1.0    rc=124 daemon starting (pid 3880827); target=lab:fm-v1.0 | stderr: Terminated                 sleep 1
+firstmate:0    rc=124 daemon starting (pid 3886257); target=firstmate:0 | stderr: Terminated                 sleep 1
+%0             rc=124 daemon starting (pid 3889795); target=%0 | stderr: Terminated                 sleep 1
+lab:0.0        rc=124 daemon starting (pid 3893597); target=lab:0.0 | stderr: Terminated                 sleep 1
+firstmate:primary rc=124 daemon starting (pid 3898753); target=firstmate:primary | stderr: Terminated                 sleep 1

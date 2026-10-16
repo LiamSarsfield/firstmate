@@ -1,0 +1,59 @@
+# Scenario: session-start fleet digest endpoint liveness (lab FM_HOME=/tmp/fm-lab.napQnp, private tmux socket fm-lab)
+## tmux windows (after killing fm-gone, fm-t1, fm-v1.0; session 'ghost' never existed)
+firstmate:0 @0 primary pane=%0
+lab:0 @1 fm-live pane=%1
+lab:2 @3 fm-t10 pane=%3
+lab:4 @5 fm-v1 pane=%5
+
+## raw root cause: tmux display-message on gone targets
+display-message -p -t lab:fm-gone -> rc=0 out='lab:fm-live %1'
+display-message -p -t =lab:=fm-gone -> rc=0 out='lab:fm-live %1'
+display-message -p -t lab:fm-t1 -> rc=0 out='lab:fm-t10 %3'
+display-message -p -t lab:fm-v1.0 -> rc=0 out='lab:fm-v1 %5'
+display-message -p -t ghost:fm-ghostsess -> rc=0 out=': '
+
+## BASE 5f2b81bc: bin/fm-session-start.sh (FLEET STATE endpoint lines)
+--- ghostsess ---
+window=ghost:fm-ghostsess
+endpoint: alive (backend=tmux window=ghost:fm-ghostsess)
+--- gone ---
+window=lab:fm-gone
+endpoint: alive (backend=tmux window=lab:fm-gone)
+--- live ---
+window=lab:fm-live
+endpoint: alive (backend=tmux window=lab:fm-live)
+--- t10 ---
+window=lab:fm-t10
+endpoint: alive (backend=tmux window=lab:fm-t10)
+--- t1 ---
+window=lab:fm-t1
+endpoint: alive (backend=tmux window=lab:fm-t1)
+--- v1.0 ---
+window=lab:fm-v1.0
+endpoint: alive (backend=tmux window=lab:fm-v1.0)
+--- v1 ---
+window=lab:fm-v1
+endpoint: alive (backend=tmux window=lab:fm-v1)
+
+## NEW a9360d25914e9a3e5377e745b234d948caf80e1c: bin/fm-session-start.sh (FLEET STATE endpoint lines)
+--- ghostsess ---
+window=ghost:fm-ghostsess
+endpoint: dead (backend=tmux window=ghost:fm-ghostsess)
+--- gone ---
+window=lab:fm-gone
+endpoint: dead (backend=tmux window=lab:fm-gone)
+--- live ---
+window=lab:fm-live
+endpoint: alive (backend=tmux window=lab:fm-live)
+--- t10 ---
+window=lab:fm-t10
+endpoint: alive (backend=tmux window=lab:fm-t10)
+--- t1 ---
+window=lab:fm-t1
+endpoint: dead (backend=tmux window=lab:fm-t1)
+--- v1.0 ---
+window=lab:fm-v1.0
+endpoint: dead (backend=tmux window=lab:fm-v1.0)
+--- v1 ---
+window=lab:fm-v1
+endpoint: alive (backend=tmux window=lab:fm-v1)

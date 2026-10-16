@@ -1,0 +1,20 @@
+# Scenario: fleet snapshot endpoint existence (bin/fm-fleet-snapshot.sh --json, lab FM_HOME, private tmux socket)
+# gone windows: lab:fm-gone, lab:fm-t1 (live neighbor fm-t10), lab:fm-v1.0 (live neighbor fm-v1); missing session: ghost
+
+## BASE: jq '.. | objects | select(has("endpoint")) | {id,target,exists,status}'
+{"id":"ghostsess","target":"ghost:fm-ghostsess","exists":true,"status":"unknown"}
+{"id":"gone","target":"lab:fm-gone","exists":true,"status":"unknown"}
+{"id":"live","target":"lab:fm-live","exists":true,"status":"unknown"}
+{"id":"t1","target":"lab:fm-t1","exists":true,"status":"unknown"}
+{"id":"t10","target":"lab:fm-t10","exists":true,"status":"unknown"}
+{"id":"v1","target":"lab:fm-v1","exists":true,"status":"unknown"}
+{"id":"v1.0","target":"lab:fm-v1.0","exists":true,"status":"unknown"}
+
+## NEW: jq '.. | objects | select(has("endpoint")) | {id,target,exists,status}'
+{"id":"ghostsess","target":"ghost:fm-ghostsess","exists":false,"status":"absent"}
+{"id":"gone","target":"lab:fm-gone","exists":false,"status":"absent"}
+{"id":"live","target":"lab:fm-live","exists":true,"status":"unknown"}
+{"id":"t1","target":"lab:fm-t1","exists":false,"status":"absent"}
+{"id":"t10","target":"lab:fm-t10","exists":true,"status":"unknown"}
+{"id":"v1","target":"lab:fm-v1","exists":true,"status":"unknown"}
+{"id":"v1.0","target":"lab:fm-v1.0","exists":false,"status":"absent"}

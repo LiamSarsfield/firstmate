@@ -1,0 +1,43 @@
+# Scenario: fm-send key delivery must not reach a live prefix/dotted neighbor of a gone target
+# Live windows each run a one-line reader: 'read -r l; echo delivered-to-<win> > cap-<win>'; a capture file proves an Enter landed there.
+# Gone: lab:fm-t1 (task t1, neighbor fm-t10), lab:fm-v1.0 (task v1.0, neighbor fm-v1), lab:fm-x1 (explicit target, no meta, neighbor fm-x10)
+
+## NEW a9360d25914e9a3e5377e745b234d948caf80e1c - gone targets
+$ bin/fm-send.sh t1 --key Enter
+error: key 'Enter' not sent to lab:fm-t1 (tmux send failed; tried meta=/tmp/fm-lab.napQnp/state/t1.meta; backend=from-meta)
+rc=1
+$ bin/fm-send.sh v1.0 --key Enter
+error: key 'Enter' not sent to lab:fm-v1.0 (tmux send failed; tried meta=/tmp/fm-lab.napQnp/state/v1.0.meta; backend=from-meta)
+rc=1
+$ bin/fm-send.sh lab:fm-x1 --key Enter
+error: explicit target 'lab:fm-x1' is not a live tmux endpoint (tried meta=/tmp/fm-lab.napQnp/state/lab:fm-x1.meta; metadata window/terminal lookup; backend=tmux). Use fm-<id> for a recorded task/lane, or pass a target whose backend endpoint can be verified.
+rc=1
+$ bin/fm-send.sh lab:fm-x1 lab steer text
+error: explicit target 'lab:fm-x1' is not a live tmux endpoint (tried meta=/tmp/fm-lab.napQnp/state/lab:fm-x1.meta; metadata window/terminal lookup; backend=tmux). Use fm-<id> for a recorded task/lane, or pass a target whose backend endpoint can be verified.
+rc=1
+capture files after NEW refusals:
+(none - no Enter reached fm-t10, fm-v1, or fm-x10)
+
+## NEW - positive controls (live meta task, live explicit name, live session:index.pane)
+$ bin/fm-send.sh t10 --key Enter
+rc=0
+$ bin/fm-send.sh lab:fm-x10 --key Enter
+rc=0
+$ bin/fm-send.sh lab:4.0 --key Enter
+rc=0
+capture files after NEW live-target sends:
+cap-t10: delivered-to-fm-t10
+cap-v1: delivered-to-fm-v1
+cap-x10: delivered-to-fm-x10
+
+## BASE 5f2b81bc - same gone targets (readers re-armed first)
+$ bin/fm-send.sh t1 --key Enter
+rc=0
+$ bin/fm-send.sh v1.0 --key Enter
+rc=0
+$ bin/fm-send.sh lab:fm-x1 --key Enter
+rc=0
+capture files after BASE sends to the same gone targets:
+cap-t10: delivered-to-fm-t10
+cap-v1: delivered-to-fm-v1
+cap-x10: delivered-to-fm-x10

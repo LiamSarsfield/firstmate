@@ -1,0 +1,9 @@
+# Scenario: away-daemon runtime pane-gone guard (bin/fm-supervise-daemon.sh loop check, FM_SUPERVISOR_TARGET=firstmate:sup FM_INJECT_FAIL_SLEEP=1)
+# The daemon starts against a live firstmate:sup; the sup window is then killed while firstmate:primary stays alive; TERM after ~4s. Log lines are deduplicated.
+## NEW: daemon log (target firstmate:sup killed ~4s before TERM; firstmate:primary stays alive)
+daemon starting (pid 3966516); target=firstmate:sup
+warn: supervisor target 'firstmate:sup' gone; backing off 1s, will retry
+daemon shutting down
+## BASE: daemon log (target firstmate:sup killed ~4s before TERM; firstmate:primary stays alive)
+daemon starting (pid 3967335); target=firstmate:sup
+daemon shutting down

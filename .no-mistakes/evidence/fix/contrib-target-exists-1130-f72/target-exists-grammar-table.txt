@@ -1,0 +1,24 @@
+# fm_backend_target_exists tmux <target> grammar table against the lab server (sourced bin/fm-backend.sh; 0=present 1=absent)
+# live: lab:fm-live (@1 %1, index 0), lab:fm-t10, lab:fm-v1, firstmate:0. gone: fm-gone, fm-t1, fm-v1.0 (killed), %2/@2 (stale ids), ghost (no session), la (session prefix of lab)
+target                 BASE   NEW   
+lab:fm-live            0      0     
+@1                     0      0     
+%1                     0      0     
+lab:@1                 0      0     
+lab                    0      0     
+=lab:=fm-live          0      0     
+lab:0                  0      0     
+lab:0.0                0      0     
+firstmate:0            0      0     
+lab:fm-gone            0      1     
+=lab:=fm-gone          0      1     
+lab:fm-t1              0      1     
+lab:fm-v1.0            0      1     
+lab:fm-v1.0.0          0      1     
+%2                     0      1     
+@2                     0      1     
+ghost:fm-x             0      1     
+ghost                  0      1     
+la:fm-live             0      1     
+lab:0.9                0      1     
+lab:fm-live:x          0      1     

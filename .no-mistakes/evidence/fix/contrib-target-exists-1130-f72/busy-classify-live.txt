@@ -1,0 +1,15 @@
+# Scenario: fm_busy_classify_live on gone tmux targets (library entry; no bin/ script calls it - sourced bin/fm-backend.sh + bin/fm-busy-lib.sh against the lab tmux server)
+
+## BASE
+fm_busy_classify_live tmux lab:fm-live          -> unknown missing
+fm_busy_classify_live tmux lab:fm-gone          -> unknown missing
+fm_busy_classify_live tmux lab:fm-t1            -> unknown missing
+fm_busy_classify_live tmux lab:fm-v1.0          -> unknown missing
+fm_busy_classify_live tmux ghost:fm-ghostsess   -> unknown missing
+
+## NEW
+fm_busy_classify_live tmux lab:fm-live          -> unknown missing
+fm_busy_classify_live tmux lab:fm-gone          -> dead endpoint-gone
+fm_busy_classify_live tmux lab:fm-t1            -> dead endpoint-gone
+fm_busy_classify_live tmux lab:fm-v1.0          -> dead endpoint-gone
+fm_busy_classify_live tmux ghost:fm-ghostsess   -> dead endpoint-gone

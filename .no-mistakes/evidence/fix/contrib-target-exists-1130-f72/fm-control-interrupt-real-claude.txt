@@ -1,0 +1,9 @@
+# Scenario: fm-control interrupt against a REAL claude CLI in lab:fm-cl (claude launched in the lab worktree; it showed its folder-trust dialog, which was never accepted)
+# Exercises the guarded fm_backend_tmux_send_key (Escape) and the post-interrupt fm_backend_target_exists check on a live session:name endpoint.
+# Escape at the trust dialog makes claude exit; the window closed right after fm-control's postcondition read it alive.
+interrupt-delivered cl harness=claude backend=tmux verified=agent-alive cancel=unconfirmed
+rc=0
+0 fm-live
+1 fm-x10
+2 fm-t10
+4 fm-v1

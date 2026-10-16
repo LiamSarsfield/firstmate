@@ -1,0 +1,25 @@
+# Scenario: crew-state no-run fallback on a gone tmux window (FM_CREW_STATE_NO_FORGE=1 bin/fm-crew-state.sh <id>, kind=scout, lab FM_HOME)
+
+## BASE
+$ bin/fm-crew-state.sh live
+state: unknown · source: pane · harness state unavailable (unknown missing)
+$ bin/fm-crew-state.sh gone
+state: unknown · source: pane · harness state unavailable (unknown missing)
+$ bin/fm-crew-state.sh t1
+state: unknown · source: pane · harness state unavailable (unknown missing)
+$ bin/fm-crew-state.sh v1.0
+state: unknown · source: pane · harness state unavailable (unknown missing)
+$ bin/fm-crew-state.sh ghostsess
+state: unknown · source: pane · harness state unavailable (unknown missing)
+
+## NEW
+$ bin/fm-crew-state.sh live
+state: unknown · source: pane · harness state unavailable (unknown missing)
+$ bin/fm-crew-state.sh gone
+state: unknown · source: none · backend target gone: lab:fm-gone
+$ bin/fm-crew-state.sh t1
+state: unknown · source: none · backend target gone: lab:fm-t1
+$ bin/fm-crew-state.sh v1.0
+state: unknown · source: none · backend target gone: lab:fm-v1.0
+$ bin/fm-crew-state.sh ghostsess
+state: unknown · source: none · backend target gone: ghost:fm-ghostsess
