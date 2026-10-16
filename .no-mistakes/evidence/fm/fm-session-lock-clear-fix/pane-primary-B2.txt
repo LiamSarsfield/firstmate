@@ -1,0 +1,50 @@
+
+ ▐▛███▛█   Claude Code v2.1.301
+▝▜██████▀  Opus 5.5 (1M context) with xhigh effort · Claude Max
+ ▝▝   ▝▝   ~/.no-mistakes/worktrees/4528b6e3b8fb/01M5229GRQW6C715T1YVZWY1W6
+
+
+! echo "CLAUDE_PID=$CLAUDE_PID SID=$CLAUDE_CODE_SESSION_ID FM_HOME=$FM_HOME NMG=${NO_MISTAKES_GATE-unset}"; ps -o pid=,ppid=,comm= -p $$,$PPID                                                          
+  ⎿  CLAUDE_PID=3269047 SID=8190948f-f0ad-431f-a273-70869b3bc108 FM_HOME=/tmp/fm-lab.MwJqC7 NMG=unset
+     3269047 3269046 claude
+     3316757 3269047 bash
+
+  Listed 1 directory                                            
+  ⎿  Interrupted · What should Claude do instead?                                                                                
+                                                                                                                                                                                     
+! B=/tmp/fm-base.onsW9B; $B/bin/fm-lock.sh; echo "[base] rc=$? line1=$(cat $FM_HOME/state/.lock) sidecar=$(cat $FM_HOME/state/.lock-session) CLAUDE_PID=$CLAUDE_PID SID=$CLAUDE_CODE_SESSION_ID"; echo  
+  "DONE""-B1"                                                                                                                                                                                           
+  ⎿  lock acquired: harness pid 3269047
+     [base] rc=0 line1=3269047 sidecar=8190948f-f0ad-431f-a273-70869b3bc108 CLAUDE_PID=3269047 SID=8190948f-f0ad-431f-a273-70869b3bc108
+     DONE-B1
+  ⎿  Interrupted · What should Claude do instead?
+
+! B=/tmp/fm-base.onsW9B; $B/bin/fm-lock.sh; echo "[base] rc=$? line1=$(cat $FM_HOME/state/.lock) sidecar=$(cat $FM_HOME/state/.lock-session) CLAUDE_PID=$CLAUDE_PID SID=$CLAUDE_CODE_SESSION_ID"; echo  
+  "DONE""-B2"                                                                                                                                                                                           
+  ⎿  lock acquired: harness pid 3424152
+     [base] rc=0 line1=3424152 sidecar=8190948f-f0ad-431f-a273-70869b3bc108 CLAUDE_PID=3269047 SID=8190948f-f0ad-431f-a273-70869b3bc108
+     DONE-B2
+  ⎿  Interrupted · What should Claude do instead?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                                                                                                                                                                                                      
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯                                                                                                                                                                                                       
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 5.5 │ 5% │ 51.7k │ $0.24 │ 3m35s │ WT HEAD                                                                                                                                                       
+  ⏸ plan mode on (shift+tab to cycle) · ← 1 agent    

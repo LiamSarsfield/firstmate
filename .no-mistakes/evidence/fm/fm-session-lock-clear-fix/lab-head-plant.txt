@@ -1,0 +1,8 @@
+# planted before H2 (front-end F=3424152, primary P=3269047)
+.lock: 3424152|
+.lock-session: b48e899e-041b-4549-9731-9a5b45d7acb1|
+.lease-t1: branch 3424152 100|
+.lease-t2: main 3424152 200|
+.lease-t3: branch 1 300|
+.claude-autoarm-epoch: epoch=7 owner_pid=1 outcome=rewake updated_at=1 session_pid=3424152 recovery_generation=g1|identity-1|
+ledger mtime: 2020-01-01 00:00:00.000000000 +0000

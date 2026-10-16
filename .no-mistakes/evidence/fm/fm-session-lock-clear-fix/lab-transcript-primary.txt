@@ -1,0 +1,87 @@
+### primary B1
+! B=/tmp/fm-base.onsW9B; $B/bin/fm-lock.sh; echo "[base] rc=$? line1=$(cat $FM_HOME/state/.lock) sidecar=$(cat $FM_HOME/state/.lock-session) CLAUDE_PID=$CLAUDE_PID SID=$CLAUDE_CODE_SESSION_ID"; echo
+  "DONE""-B1"
+  ⎿  lock acquired: harness pid 3269047
+     [base] rc=0 line1=3269047 sidecar=8190948f-f0ad-431f-a273-70869b3bc108 CLAUDE_PID=3269047 SID=8190948f-f0ad-431f-a273-70869b3bc108
+     DONE-B1
+### primary B2
+! B=/tmp/fm-base.onsW9B; $B/bin/fm-lock.sh; echo "[base] rc=$? line1=$(cat $FM_HOME/state/.lock) sidecar=$(cat $FM_HOME/state/.lock-session) CLAUDE_PID=$CLAUDE_PID SID=$CLAUDE_CODE_SESSION_ID"; echo
+  "DONE""-B2"
+  ⎿  lock acquired: harness pid 3424152
+     [base] rc=0 line1=3424152 sidecar=8190948f-f0ad-431f-a273-70869b3bc108 CLAUDE_PID=3269047 SID=8190948f-f0ad-431f-a273-70869b3bc108
+     DONE-B2
+### primary B3
+! B=/tmp/fm-base.onsW9B; $B/bin/fm-lock.sh; echo "[base] rc=$? line1=$(cat $FM_HOME/state/.lock) sidecar=$(cat $FM_HOME/state/.lock-session) CLAUDE_PID=$CLAUDE_PID SID=$CLAUDE_CODE_SESSION_ID"; echo
+  "DONE""-B3"
+  ⎿  error: another live firstmate session holds the lock (pid 3424152, session 8190948f-f0ad-431f-a273-70869b3bc108); operate read-only until resolved
+     [base] rc=1 line1=3424152 sidecar=8190948f-f0ad-431f-a273-70869b3bc108 CLAUDE_PID=3269047 SID=b48e899e-041b-4549-9731-9a5b45d7acb1
+     DONE-B3
+### primary H1
+! bin/fm-lock.sh; echo "[head] rc=$? line1=$(cat $FM_HOME/state/.lock) sidecar=$(cat $FM_HOME/state/.lock-session) CLAUDE_PID=$CLAUDE_PID SID=$CLAUDE_CODE_SESSION_ID"; git rev-parse --short HEAD;
+  echo "DONE""-H1"
+  ⎿  lock acquired: harness pid 3269047
+     [head] rc=0 line1=3269047 sidecar=b48e899e-041b-4549-9731-9a5b45d7acb1 CLAUDE_PID=3269047 SID=b48e899e-041b-4549-9731-9a5b45d7acb1
+     78e431aa
+     DONE-H1
+### primary H2
+! S=$FM_HOME/state; echo "before: t1=$(bin/fm-lease.sh check t1)"; bin/fm-lock.sh; echo "[head] rc=$? line1=$(cat $S/.lock) sidecar=$(cat $S/.lock-session) CLAUDE_PID=$CLAUDE_PID
+  SID=$CLAUDE_CODE_SESSION_ID"; for t in t1 t2 t3; do echo "after: $t=$(bin/fm-lease.sh check $t)"; done; echo "ledger: $(head -1 $S/.claude-autoarm-epoch) | $(sed -n 2p $S/.claude-autoarm-epoch) |
+  mtime=$(stat -c %y $S/.claude-autoarm-epoch)"; bin/fm-lock.sh status; FM_SUPERVISION_ACTOR=main bin/fm-lease.sh claim t1; echo "main claim of branch t1 rc=$?"; echo "DONE""-H2"
+  ⎿  before: t1=branch 3424152 100 live
+     lock acquired: harness pid 3269047
+     [head] rc=0 line1=3269047 sidecar=b48e899e-041b-4549-9731-9a5b45d7acb1 CLAUDE_PID=3269047 SID=b48e899e-041b-4549-9731-9a5b45d7acb1
+     after: t1=branch 3269047 100 live
+     after: t2=main 3269047 200 live
+     after: t3=branch 1 300 stale
+     ledger: epoch=7 owner_pid=1 outcome=rewake updated_at=1 session_pid=3269047 recovery_generation=g1 | identity-1 | mtime=2020-01-01 00:00:00.000000000 +0000
+     lock: held by live harness pid 3269047
+     error: claim refused - task 't1' is leased to the branch supervision actor (state/.lease-t1)
+     main claim of branch t1 rc=6
+     DONE-H2
+### primary H2b
+! FM_SUPERVISION_ACTOR=branch FM_LEASE_HOLDER_PID=3424152 bin/fm-lease.sh claim t4 --actor branch; echo "pinned-live claim rc=$? t4=$(bin/fm-lease.sh check t4)"; FM_SUPERVISION_ACTOR=branch
+  FM_LEASE_HOLDER_PID=999999 bin/fm-lease.sh claim t5 --actor branch; echo "pinned-dead claim rc=$? t5=$(bin/fm-lease.sh check t5)"; echo "DONE""-H2b"
+  ⎿  pinned-live claim rc=0 t4=branch 3269047 1792175150 live
+     pinned-dead claim rc=0 t5=branch 999999 1792175150 stale
+     DONE-H2b
+### primary H3
+! S=$FM_HOME/state; bin/fm-lock.sh; echo "[head] rc=$? line1=$(cat $S/.lock) sidecar=$(cat $S/.lock-session) CLAUDE_PID=$CLAUDE_PID SID=$CLAUDE_CODE_SESSION_ID"; echo "t1=$(bin/fm-lease.sh check
+  t1)"; kill -0 3424152 && echo "front-end 3424152 still alive"; echo "DONE""-H3"
+  ⎿  lock acquired: harness pid 3269047
+     [head] rc=0 line1=3269047 sidecar=c4f0d241-7999-4d5c-aeed-f50772328c33 CLAUDE_PID=3269047 SID=c4f0d241-7999-4d5c-aeed-f50772328c33
+     t1=branch 3269047 100 live
+     front-end 3424152 still alive
+     DONE-H3
+### primary H4
+! timeout 170 bin/fm-session-start.sh --reemit --source clear > /home/liam/.no-mistakes/evidence/01M5229GRQW6C715T1YVZWY1W6/lab-head-digest-after-clear.txt 2>&1; echo "digest rc=$?"; grep -n -A3
+  '^.*LOCK$' /home/liam/.no-mistakes/evidence/01M5229GRQW6C715T1YVZWY1W6/lab-head-digest-after-clear.txt | head -8; grep -c 'READ-ONLY SESSION'
+  /home/liam/.no-mistakes/evidence/01M5229GRQW6C715T1YVZWY1W6/lab-head-digest-after-clear.txt; echo "DONE""-H4"
+  ⎿  digest rc=0
+     15:LOCK
+     16---------------------------------------------------------------------------------
+     17-lock acquired: harness pid 3269047
+     18-
+     0
+     DONE-H4
+### primary BD1
+! B=/tmp/fm-base.onsW9B; $B/bin/fm-lock.sh; echo "[base] rc=$? line1=$(cat $FM_HOME/state/.lock) sidecar=$(cat $FM_HOME/state/.lock-session)"; echo "DONE""-BD1"
+  ⎿  lock acquired: harness pid 3269047
+     [base] rc=0 line1=3269047 sidecar=5274d392-d274-425a-b238-bdaf3acb238b
+     DONE-BD1
+### primary BD2
+! B=/tmp/fm-base.onsW9B; $B/bin/fm-lock.sh; echo "[base confirm] rc=$? line1=$(cat $FM_HOME/state/.lock) sidecar=$(cat $FM_HOME/state/.lock-session)"; echo "DONE""-BD2"
+  ⎿  lock acquired: harness pid 3424152
+     [base confirm] rc=0 line1=3424152 sidecar=5274d392-d274-425a-b238-bdaf3acb238b
+     DONE-BD2
+### primary BD3
+! B=/tmp/fm-base.onsW9B; timeout 170 $B/bin/fm-session-start.sh --reemit --source clear > /home/liam/.no-mistakes/evidence/01M5229GRQW6C715T1YVZWY1W6/lab-base-digest-after-clear.txt 2>&1; echo "base
+  digest rc=$? SID=$CLAUDE_CODE_SESSION_ID"; grep -c 'READ-ONLY SESSION' /home/liam/.no-mistakes/evidence/01M5229GRQW6C715T1YVZWY1W6/lab-base-digest-after-clear.txt; echo "DONE""-BD3"
+  ⎿  base digest rc=0 SID=122e3eec-291f-4644-a6be-8cf770d8bda3
+     1
+     DONE-BD3
+### primary K1
+! S=$FM_HOME/state; bin/fm-lock.sh; echo "[head, no same-session acquisition before /clear] rc=$? line1=$(cat $S/.lock) sidecar=$(cat $S/.lock-session) CLAUDE_PID=$CLAUDE_PID
+  SID=$CLAUDE_CODE_SESSION_ID"; echo "DONE""-K1"
+  ⎿  error: another live firstmate session holds the lock (pid 3424152, session c4f0d241-7999-4d5c-aeed-f50772328c33); operate read-only until resolved
+     [head, no same-session acquisition before /clear] rc=1 line1=3424152 sidecar=c4f0d241-7999-4d5c-aeed-f50772328c33 CLAUDE_PID=3269047 SID=5274d392-d274-425a-b238-bdaf3acb238b
+     DONE-K1
