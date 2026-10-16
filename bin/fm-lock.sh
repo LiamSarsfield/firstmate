@@ -22,9 +22,14 @@
 # anchor. A live line 1 outside the ancestry, owned only through the trusted
 # id, is rewritten to the anchor under the claim lock and then the
 # lease-command lock, and task leases recorded against the old pid move to the
-# anchor in that same section (fm_lease_rekey_holder in bin/fm-lease-lib.sh).
+# anchor in that same section (fm_lease_rekey_holder in bin/fm-lease-lib.sh),
+# as does a Claude auto-arm rewake bound to the old pid, under
+# state/.claude-autoarm.lock (fm_autoarm_rekey_session in bin/fm-wake-lib.sh).
 # A later /clear re-key in the same process is then still proven by ancestry
-# after the id changes, and a held lease stays live. When the lease-command
+# after the id changes, a held lease stays live, and the mid-turn guard still
+# accepts that rewake. A lease or rewake that cannot be moved, including when
+# the auto-arm lock stays busy past LEASE_LOCK_WAIT seconds, is reported as a
+# warning and the re-anchor still completes. When the lease-command
 # lock stays busy past LEASE_LOCK_WAIT seconds, the confirmation only refreshes
 # the sidecar, as for a line 1 in the ancestry, and a later acquisition
 # re-anchors.
@@ -82,6 +87,8 @@ CLAIM_LOCK_HELD=0
 LEASE_LOCK="$STATE/.fm-lease-command.lock"
 LEASE_LOCK_HELD=0
 LEASE_LOCK_WAIT=5
+AUTOARM_LOCK="$STATE/.claude-autoarm.lock"
+AUTOARM_LOCK_HELD=0
 # The live line-1 pid a same-session confirmation is moving off, or empty.
 REANCHOR=
 # PHASE 0: committed/none. 1: sidecar mutated, line 1 not written. 2: line 1 written, not verified.
@@ -90,6 +97,12 @@ LOCK_SESSION_PHASE=0
 LOCK_SESSION_KIND=0
 LOCK_SESSION_PREV="$STATE/.lock-session.prev"
 LOCK_LINE_PRE=
+release_autoarm_lock() {
+  if [ "$AUTOARM_LOCK_HELD" -eq 1 ]; then
+    fm_lock_release "$AUTOARM_LOCK"
+    AUTOARM_LOCK_HELD=0
+  fi
+}
 release_lease_lock() {
   if [ "$LEASE_LOCK_HELD" -eq 1 ]; then
     fm_lock_release "$LEASE_LOCK"
@@ -123,6 +136,7 @@ commit_lock_session() {
 on_lock_exit() {
   restore_uncommitted_lock_session
   [ -n "$LOCK_LINE_PRE" ] && rm -f "$LOCK_LINE_PRE"
+  release_autoarm_lock
   release_lease_lock
   release_claim_lock
 }
@@ -309,6 +323,15 @@ if [ ! -f "$LOCK" ] || [ -L "$LOCK" ] || [ "$written" != "$me" ]; then
 fi
 if [ -n "$REANCHOR" ] && ! fm_lease_rekey_holder "$REANCHOR" "$me"; then
   echo "warning: a task lease recorded against pid $REANCHOR could not be moved to pid $me, so it reads as stale" >&2
+fi
+if [ -n "$REANCHOR" ] && fm_autoarm_ledger_read "$STATE" && [ "$FM_AUTOARM_SESSION" = "$REANCHOR" ]; then
+  if fm_lock_acquire_wait_max "$AUTOARM_LOCK" "$LEASE_LOCK_WAIT"; then
+    AUTOARM_LOCK_HELD=1
+  fi
+  if [ "$AUTOARM_LOCK_HELD" -ne 1 ] || ! fm_autoarm_rekey_session "$STATE" "$REANCHOR" "$me"; then
+    echo "warning: the Claude auto-arm rewake recorded against pid $REANCHOR could not be moved to pid $me, so a mid-turn guard can report supervision off until the next Stop" >&2
+  fi
+  release_autoarm_lock
 fi
 commit_lock_session
 release_lease_lock
