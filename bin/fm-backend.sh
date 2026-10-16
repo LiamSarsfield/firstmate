@@ -952,28 +952,15 @@ fm_backend_composer_state() {  # <backend> <target> [expected-label] -> empty|pe
 # Owns fm-crew-state.sh's pane_readable check too, so callers that only need a
 # fast alive/dead read (recovery digests, the session-start fleet digest) do
 # not re-derive it inline.
+# For tmux, TARGET accepts `%pane`, `@window`, `session:@window`, a bare exact
+# session, and `session:window`, `session:index`, or either window selector with
+# a numeric `.pane` suffix; optional `=session:=window` markers stay exact too.
 fm_backend_target_exists() {  # <backend> <target> [expected-label]
-  local backend=$1 target=$2 expected_label=${3:-} session window windows pane
+  local backend=$1 target=$2 expected_label=${3:-} session pane
   case "$backend" in
     tmux)
       fm_backend_source tmux || return 1
-      case "$target" in
-        %*)
-          tmux list-panes -a -F '#{pane_id}' 2>/dev/null | grep -Fqx -- "$target"
-          ;;
-        *:*:*|'':*|*:'')
-          return 1
-          ;;
-        *:*)
-          session=${target%%:*}
-          window=${target#*:}
-          windows=$(fm_backend_tmux_window_inventory "$session") || return 1
-          printf '%s\n' "$windows" | grep -Fqx -- "$window"
-          ;;
-        *)
-          return 1
-          ;;
-      esac
+      fm_backend_tmux_target_exists "$target"
       ;;
     herdr)
       fm_backend_source herdr || return 1

@@ -57,6 +57,7 @@ SESSION="smoke"
 WINDOW="fm-smoke1"
 TARGET="$SESSION:$WINDOW"
 OTHER_SESSION="smoke-other"
+PREFIX_SESSION="smoke-prefix-live"
 
 # --- create session ----------------------------------------------------------
 
@@ -64,6 +65,10 @@ tmux new-session -d -s "$SESSION" -x 200 -y 50 \
   || fail "real tmux: new-session failed"
 tmux new-session -d -s "$OTHER_SESSION" -x 200 -y 50 \
   || fail "real tmux: second new-session failed"
+tmux new-session -d -s "$PREFIX_SESSION" -n "$WINDOW" -x 200 -y 50 \
+  || fail "real tmux: prefix-sharing session failed"
+tmux new-session -d -s firstmate -n supervisor -x 200 -y 50 \
+  || fail "real tmux: default supervisor session failed"
 fm_backend_tmux_create_task "$SESSION" "$WINDOW" "$HOME" \
   || fail "fm_backend_tmux_create_task failed to create the task window"
 tmux list-windows -t "$SESSION" -F '#{window_name}' | grep -qx "$WINDOW" \
@@ -170,6 +175,70 @@ LIVE_PANE=$(tmux display-message -p -t "$TARGET" '#{pane_id}') \
 fm_backend_target_exists tmux "$LIVE_PANE" \
   || fail "fm_backend_target_exists should report the existing pane present"
 pass "real tmux: fm_backend_target_exists finds an existing pane"
+
+LIVE_WINDOW_ID=$(tmux display-message -p -t "$TARGET" '#{window_id}') \
+  || fail "could not read the existing window id"
+LIVE_WINDOW_INDEX=$(tmux display-message -p -t "$TARGET" '#{window_index}') \
+  || fail "could not read the existing window index"
+LIVE_PANE_INDEX=$(tmux display-message -p -t "$TARGET" '#{pane_index}') \
+  || fail "could not read the existing pane index"
+
+for exact_target in "$LIVE_WINDOW_ID" "$SESSION:$LIVE_WINDOW_ID"; do
+  fm_backend_target_exists tmux "$exact_target" \
+    || fail "fm_backend_target_exists rejected live window-id target $exact_target"
+done
+pass "real tmux: fm_backend_target_exists accepts bare and session-scoped window ids"
+
+for indexed_target in "$SESSION:$LIVE_WINDOW_INDEX" firstmate:0; do
+  fm_backend_target_exists tmux "$indexed_target" \
+    || fail "fm_backend_target_exists rejected live window-index target $indexed_target"
+done
+pass "real tmux: fm_backend_target_exists accepts window indexes including firstmate:0"
+
+for pane_target in "$SESSION:$WINDOW.$LIVE_PANE_INDEX" \
+  "$SESSION:$LIVE_WINDOW_INDEX.$LIVE_PANE_INDEX"; do
+  fm_backend_target_exists tmux "$pane_target" \
+    || fail "fm_backend_target_exists rejected live pane target $pane_target"
+done
+pass "real tmux: fm_backend_target_exists accepts name.pane and index.pane targets"
+
+for exact_target in "$SESSION" "=$SESSION:=$WINDOW"; do
+  fm_backend_target_exists tmux "$exact_target" \
+    || fail "fm_backend_target_exists rejected exact target $exact_target"
+done
+pass "real tmux: fm_backend_target_exists accepts a bare session and explicit exact markers"
+
+if fm_backend_target_exists tmux "smoke-prefix:$WINDOW"; then
+  fail "fm_backend_target_exists prefix-matched a missing session"
+fi
+pass "real tmux: fm_backend_target_exists anchors the session name"
+
+for malformed_target in '' : "$SESSION:" ":$WINDOW" "$SESSION:$WINDOW:extra"; do
+  if fm_backend_target_exists tmux "$malformed_target"; then
+    fail "fm_backend_target_exists accepted malformed target '$malformed_target'"
+  fi
+done
+pass "real tmux: fm_backend_target_exists rejects malformed targets"
+
+# A gone name that prefixes a live neighbor is the dangerous send-keys case:
+# tmux itself would fall through to the neighbor, so the adapter must stop first.
+tmux new-window -d -t "$SESSION:" -n fm-t10 \
+  || fail "real tmux: prefix-neighbor window failed"
+tmux new-window -d -t "$SESSION:" -n fm-t1 \
+  || fail "real tmux: gone-prefix window failed"
+tmux kill-window -t "=$SESSION:=fm-t1" \
+  || fail "real tmux: could not remove the gone-prefix window"
+tmux send-keys -t "$SESSION:fm-t10" \
+  "printf 'prefix-neighbor-ready\\n'; read -r -n 1 key; printf '%s' \"\$key\" > '$SHIM_DIR/key-capture'" Enter
+wait_for_capture_text "$SESSION:fm-t10" prefix-neighbor-ready \
+  || fail "real tmux: prefix-neighbor reader did not become ready"
+if fm_backend_tmux_send_key "$SESSION:fm-t1" X; then
+  fail "fm_backend_tmux_send_key accepted a gone prefix target"
+fi
+sleep 0.1
+[ ! -e "$SHIM_DIR/key-capture" ] \
+  || fail "fm_backend_tmux_send_key delivered a key to the prefix neighbor"
+pass "real tmux: fm_backend_tmux_send_key withholds a key from a gone prefix target"
 
 # --- kill and recovery-grade missing-window classification ------------------
 
