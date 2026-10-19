@@ -3658,9 +3658,9 @@ test_herdr_projection_teardown_surfaces_restore_failure_without_blocking_cleanup
 }
 
 # A task's per-task watcher markers (.seen-<id>_status, .seen-<id>_turn-ended,
-# .hb-surfaced-<id>), relaunch history side files, and an orphaned presentation
-# journal - one whose pane the close path proved gone without retiring it - must
-# not outlive teardown, while another task's markers and history must.
+# .hb-surfaced-<id>), relaunch history rollback snapshots, and an orphaned
+# presentation journal - one whose pane the close path proved gone without
+# retiring it - must not outlive teardown, while another task's state must.
 seed_watcher_markers() {  # <case-dir> <task-id>
   local state="$1/state" id=$2
   printf '0:0\n' > "$state/.seen-${id}_status"
@@ -3680,9 +3680,7 @@ test_teardown_retires_task_watcher_markers_and_orphan_journal() {
   seed_watcher_markers "$case_dir" task-x1
   seed_watcher_markers "$case_dir" task-y2
   seed_watcher_markers "$case_dir" task-x1_extra
-  printf '%s\n' 'history' > "$case_dir/state/task-x1.control-relaunch.note.history"
   printf '%s\n' 'history-prior' > "$case_dir/state/task-x1.control-relaunch.note.history-prior"
-  printf '%s\n' 'other-history' > "$case_dir/state/task-y2.control-relaunch.note.history"
   printf '%s\n' 'other-history-prior' > "$case_dir/state/task-y2.control-relaunch.note.history-prior"
   printf '%s\n' 'version=1' 'task_id=task-y2' 'projection_id=ZyXwVuTsRqPoNmLkJiHgFe' \
     > "$case_dir/state/task-y2.herdr-presentation"
@@ -3691,12 +3689,11 @@ test_teardown_retires_task_watcher_markers_and_orphan_journal() {
     run_teardown "$case_dir" --force > "$case_dir/stdout" 2> "$case_dir/stderr" \
     || fail "retire-watcher-markers: teardown failed: $(cat "$case_dir/stderr")"
   for marker in .seen-task-x1_status .seen-task-x1_turn-ended .hb-surfaced-task-x1 \
-    task-x1.herdr-presentation task-x1.control-relaunch.note.history \
-    task-x1.control-relaunch.note.history-prior; do
+    task-x1.herdr-presentation task-x1.control-relaunch.note.history-prior; do
     assert_absent "$case_dir/state/$marker" "teardown left the torn-down task's $marker behind"
   done
   for marker in .seen-task-y2_status .seen-task-y2_turn-ended .hb-surfaced-task-y2 task-y2.herdr-presentation \
-    task-y2.control-relaunch.note.history task-y2.control-relaunch.note.history-prior \
+    task-y2.control-relaunch.note.history-prior \
     .seen-task-x1_extra_status .seen-task-x1_extra_turn-ended .hb-surfaced-task-x1_extra; do
     assert_present "$case_dir/state/$marker" "teardown removed another task's $marker"
   done

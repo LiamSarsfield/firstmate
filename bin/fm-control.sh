@@ -87,8 +87,8 @@
 #              blocks with tokens issued in this task's relaunch journal move
 #              to data/<id>/progress-notes.md. The brief is atomically replaced
 #              from a hidden PID-scoped sibling file; the new note links to
-#              nonempty history, which teardown removes with the journal and
-#              which rollback restores along with the brief.
+#              nonempty history, which rollback restores along with the brief;
+#              archived history stays with the task's data during teardown.
 #              Records a durable checkpoint and that note, exits the old agent,
 #              then delegates the launch to its single owner,
 #              bin/fm-spawn.sh --relaunch. A failure before publication keeps
