@@ -611,6 +611,42 @@ test_relaunch_appends_the_progress_note_to_the_instructions() {
   pass "fm-control relaunch: progress and the Firstmate-worktree worker identity reach the replacement"
 }
 
+test_relaunch_bounds_notes_and_preserves_legacy_history() {
+  local dir out rc brief history n size first_size=0
+  dir=$(new_case notehistory rl2c)
+  add_ship_task "$dir" rl2c claude
+  brief="$dir/home/data/rl2c/brief.md"
+  history="$dir/home/data/rl2c/progress-notes.md"
+  printf '\n## Progress note (format)\nOriginal example, not a relaunch section.\n' >> "$brief"
+  for n in {1..18}; do
+    printf '\n## Progress note (2026-10-19T08:00:00Z)\n\nLegacy note %s\n' "$n" >> "$brief"
+    awk 'BEGIN {for (i=0; i<5600; i++) printf "x"; print ""}' >> "$brief"
+  done
+  for n in 1 2 3; do
+    out=$(run_control "$dir" rl2c relaunch --note "Current note $n"$'\n## Next step\nContinue testing.'); rc=$?
+    expect_code 0 "$rc" "repeated relaunch should succeed"$'\n'"$out"
+    [ "$(grep -c '^## Progress note ([0-9]' "$brief")" -eq 1 ] \
+      || fail "the brief must retain only the newest progress note, including on legacy tasks"
+    assert_grep 'Exercise relaunch behavior for rl2c.' "$brief" "the original instructions must survive compaction"
+    assert_grep 'Original example, not a relaunch section.' "$brief" "a similar original heading must survive compaction"
+    assert_grep "Current note $n" "$dir/home/data/rl2c/launch-brief.md" "the newest note must reach the replacement"
+    assert_grep '## Next step' "$brief" "a note may contain other Markdown sections"
+    assert_grep "$history" "$brief" "the replacement must be able to find earlier notes"
+    size=$(wc -c < "$brief")
+    if [ "$n" -eq 1 ]; then first_size=$size; fi
+    [ "$size" -eq "$first_size" ] || fail "equal-sized relaunch notes must not grow the brief"
+  done
+  [ "$(grep -c '^## Progress note (' "$history")" -eq 20 ] \
+    || fail "all eighteen legacy notes and both superseded notes must be archived"
+  for n in {1..18}; do
+    grep -qx "Legacy note $n" "$history" || fail "legacy note $n was lost"
+  done
+  assert_grep 'Current note 1' "$history" "the first replacement note must be archived"
+  assert_grep 'Current note 2' "$history" "the second replacement note must be archived"
+  ! grep -q 'Current note 3' "$history" || fail "the current note must remain in the brief"
+  pass "fm-control relaunch: repeated notes stay bounded and legacy history remains discoverable"
+}
+
 test_relaunch_note_inbox_listing_is_safe_on_empty_inbox() {
   local dir out rc brief cmd inbox shell_name status
   dir=$(new_case notelist rl2b)
@@ -2783,6 +2819,7 @@ test_relaunch_preserves_durable_task_metadata
 test_relaunch_serializes_concurrent_durable_metadata_publication
 test_disabled_relaunch_clears_prior_trace_context
 test_relaunch_appends_the_progress_note_to_the_instructions
+test_relaunch_bounds_notes_and_preserves_legacy_history
 test_relaunch_note_inbox_listing_is_safe_on_empty_inbox
 test_relaunch_requires_a_note_for_a_ship_task
 test_harness_switch_moves_the_record_and_clears_prior_wiring

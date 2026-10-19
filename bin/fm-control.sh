@@ -83,6 +83,9 @@
 #              inherits the local copy but none of the conversation; a
 #              secondmate reconciles its own home's records at startup, so its
 #              standing charter is never rewritten.
+#              Only the newest progress note stays in the brief; superseded
+#              sections, including those in existing briefs, are archived in
+#              data/<id>/progress-notes.md and linked from the new note.
 #              Records a durable checkpoint and that note, exits the old agent,
 #              then delegates the launch to its single owner,
 #              bin/fm-spawn.sh --relaunch. A failure before publication keeps
@@ -1084,7 +1087,7 @@ safe_checkpoint() {
 # never rewritten: a secondmate reconciles its own home's records at startup,
 # so the note stays parent-side audit evidence.
 record_note() {
-  local stamp inbox_q
+  local stamp inbox_q history heading next_brief
   [ -n "$NOTE" ] || return 0
   stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   printf '%s\n' "$NOTE" > "$NOTE_FILE"
@@ -1092,6 +1095,20 @@ record_note() {
     ship|scout)
       cp -p "$RELAUNCH_BRIEF" "$BRIEF_PRIOR" \
         || die "could not preserve task $ID's instructions before recording the progress note"
+      history="$DATA/$ID/progress-notes.md"
+      heading='^## Progress note [(][0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z[)]$'
+      awk -v heading="$heading" '$0 ~ heading {notes=1} notes' "$BRIEF_PRIOR" >> "$history" \
+        || die "could not archive task $ID's earlier progress notes"
+      next_brief="$RELAUNCH_BRIEF.tmp"
+      cp -p "$BRIEF_PRIOR" "$next_brief" \
+        || die "could not stage task $ID's replacement instructions"
+      # Buffer blank lines so the separator before the note cannot accumulate.
+      awk -v heading="$heading" '
+        $0 ~ heading {exit}
+        NF {printf "%s", blank; blank=""; print; next}
+        {blank=blank $0 ORS}
+      ' "$BRIEF_PRIOR" > "$next_brief" \
+        || die "could not retain task $ID's original instructions"
       {
         echo
         echo "## Progress note ($stamp)"
@@ -1105,9 +1122,12 @@ record_note() {
         echo "each message in numeric order, then mv each handled file into"
         echo "'$inbox_q/handled/'. A steer sent before the relaunch survives there."
         echo
+        printf 'Earlier progress notes: %s\n\n' "$history"
         printf '%s\n' "$NOTE"
-      } >> "$RELAUNCH_BRIEF" \
+      } >> "$next_brief" \
         || die "could not append the progress note to task $ID's instructions"
+      mv -f "$next_brief" "$RELAUNCH_BRIEF" \
+        || die "could not publish task $ID's replacement instructions"
       ;;
   esac
 }
