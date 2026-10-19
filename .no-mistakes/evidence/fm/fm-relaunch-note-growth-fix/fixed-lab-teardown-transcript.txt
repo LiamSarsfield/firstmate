@@ -1,0 +1,24 @@
+=== fm-teardown.sh rl8cfe5c6a --force rc=0
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    teardown: reaping leaked worktree process(es) for rl8cfe5c6a: 1017849 1330085 1333177
+    teardown: force-killing leaked worktree process(es) for rl8cfe5c6a: 1017849
+    A new version of treehouse is available: v2.3.0 → v3.1.4
+    Run "treehouse update" to update
+    
+    🌳 Worktree returned to pool.
+    teardown rl8cfe5c6a complete (window firstmate:fm-rl8cfe5c6a, worktree /tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes)
+    Backlog: rl8cfe5c6a is closed in /tmp/fmrl.iZuRim/fixed/home/data/backlog.md. Run bin/fm-tasks-axi.sh ready for dependency-cleared candidates, check date gates, and dispatch only work whose blockers are gone and date is due.
+--- state/ after teardown:
+    .fm-lab-tmux-dir
+    .guard-watcher-stale-banner
+    home-summary.json
+    terminal-outcomes
+--- data/rl8cfe5c6a after teardown:
+    total 352
+    drwxrwxr-x 2 liam liam    100 Oct 19 12:47 .
+    drwxrwxr-x 3 liam liam    100 Oct 19 12:48 ..
+    -rw-rw-r-- 1 liam liam  16842 Oct 19 12:47 brief.md
+    -rw-rw-r-- 1 liam liam  18358 Oct 19 12:47 launch-brief.md
+    -rw-rw-r-- 1 liam liam 317728 Oct 19 12:47 progress-notes.md
+--- history-prior present? no
+--- progress-notes.md sha256: c33a3c9861816bde (evidence copy: c33a3c9861816bde)

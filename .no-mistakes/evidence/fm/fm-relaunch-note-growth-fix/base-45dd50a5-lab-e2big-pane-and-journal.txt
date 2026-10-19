@@ -1,0 +1,26 @@
+# base 45dd50a5 lab: tmux pane of task rl08f54364 after relaunch 3 (old worker already stopped)
+liam@liam-ROG-Flow-Z13-GZ302EAC:/tmp/fmrl.iZuRim/base/treehouse/.treehouse/notes-ee1574/1/notes$ export GOTMPDIR=/tmp/fm-rl08f54364/gotmp
+liam@liam-ROG-Flow-Z13-GZ302EAC:/tmp/fmrl.iZuRim/base/treehouse/.treehouse/notes-ee1574/1/notes$ export COMPACT_ADVISER_DISABLE=1
+liam@liam-ROG-Flow-Z13-GZ302EAC:/tmp/fmrl.iZuRim/base/treehouse/.treehouse/notes-ee1574/1/notes$ export FM_TASK_ID=rl08f54364
+liam@liam-ROG-Flow-Z13-GZ302EAC:/tmp/fmrl.iZuRim/base/treehouse/.treehouse/notes-ee1574/1/notes$ . '/tmp/fm-rl08f54364+0d34a59fc008a467f62b221ee7bd2a6f3cd59a4799ad0d69e07d65b1d9963fe3/launch.s1792410550.1399030.29695.sh'
+bash: /usr/bin/env: Argument list too long
+liam@liam-ROG-Flow-Z13-GZ302EAC:/tmp/fmrl.iZuRim/base/treehouse/.treehouse/notes-ee1574/1/notes$
+
+# journal state/rl08f54364.control-relaunch
+v1
+task=rl08f54364
+phase=failed:launching
+ts=2026-10-19T11:51:06Z
+backend=tmux
+endpoint=firstmate:fm-rl08f54364
+worktree=/tmp/fmrl.iZuRim/base/treehouse/.treehouse/notes-ee1574/1/notes
+kind=ship
+from_harness=codex
+from_model=default
+from_effort=low
+to_harness=codex
+to_model=default
+to_effort=low
+rollback=none-new-record-kept
+
+# brief.md size: 131360 bytes; '## Progress note' sections: 3

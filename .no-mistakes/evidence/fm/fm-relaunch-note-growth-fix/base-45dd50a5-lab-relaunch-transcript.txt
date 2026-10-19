@@ -1,0 +1,31 @@
+=== [B-R1] fm-control.sh rl08f54364 relaunch --note-file note1.txt (40001 bytes) rc=0 in 5s
+    ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ●  WATCHER DOWN - SUPERVISION IS OFF
+    ●  1 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+    ●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+    ●  This is a supervision warning only; the guarded operation WILL still run.
+    ●  repair missing watcher supervision according to the session-start block for this harness; do not use shell &.
+    ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    relaunched rl08f54364 harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl08f54364 worktree=/tmp/fmrl.iZuRim/base/treehouse/.treehouse/notes-ee1574/1/notes
+    sizes: brief.md=50322 launch-brief.md=51789 encoded-arg=51823(+1 NUL; limit 131072) history=absent
+    progress-note headings: brief=1 history=absent  earlier-notes-link-lines=0
+    journal: phase=complete 
+    pane process: codex  codex pids in pane session: 1367739 
+    last status line: paused [at=1792410532]: This task was relaunched. Continue from here; the local copy and every
+=== [B-R2] fm-control.sh rl08f54364 relaunch --note-file note2.txt (40001 bytes) rc=0 in 6s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl08f54364 harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl08f54364 worktree=/tmp/fmrl.iZuRim/base/treehouse/.treehouse/notes-ee1574/1/notes
+    sizes: brief.md=90841 launch-brief.md=92308 encoded-arg=92342(+1 NUL; limit 131072) history=absent
+    progress-note headings: brief=2 history=absent  earlier-notes-link-lines=0
+    journal: phase=complete 
+    pane process: codex  codex pids in pane session: 1389013 
+    last status line: paused [at=1792410546]: This task was relaunched. Continue from here; the local copy and every
+=== [B-R3] fm-control.sh rl08f54364 relaunch --note-file note3.txt (40001 bytes) rc=1 in 119s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    error: the replacement agent for rl08f54364 did not come up within 90s (endpoint reads 'dead')
+    error: rl08f54364 was relaunched on codex but no running agent could be confirmed; its work is preserved at /tmp/fmrl.iZuRim/base/treehouse/.treehouse/notes-ee1574/1/notes
+    sizes: brief.md=131360 launch-brief.md=132827 encoded-arg=132861(+1 NUL; limit 131072) history=absent
+    progress-note headings: brief=3 history=absent  earlier-notes-link-lines=0
+    journal: phase=failed:launching 
+    pane process: bash  codex pids in pane session: none
+    last status line: paused [at=1792410546]: This task was relaunched. Continue from here; the local copy and every

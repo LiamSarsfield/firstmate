@@ -1,0 +1,166 @@
+=== [R1] fm-control.sh rl8cfe5c6a relaunch --note-file note1.txt (40001 bytes) rc=0 in 5s
+    ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ●  WATCHER DOWN - SUPERVISION IS OFF
+    ●  1 task(s) in flight, but no watcher has a fresh beacon (last beat: never, grace 300s).
+    ●  Trust the emitted supervision protocol for this harness; do not use shell & for watcher repair.
+    ●  This is a supervision warning only; the guarded operation WILL still run.
+    ●  repair missing watcher supervision according to the session-start block for this harness; do not use shell &.
+    ●━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=50755 launch-brief.md=52271 encoded-arg=52305(+1 NUL; limit 131072) history=absent
+    progress-note headings: brief=2 history=absent  earlier-notes-link-lines=0
+    journal: phase=complete note_token=0001086836.16154 
+    pane process: codex  codex pids in pane session: 1089785 
+    last status line: paused [at=1792410154]: This task was relaunched. Continue from here; the local copy and every
+=== [R2-refused] fm-control.sh rl8cfe5c6a relaunch --note-file note2.txt (40001 bytes) rc=1 in 0s
+    error: task rl8cfe5c6a's composer visibly holds pending text; refusing to type the /quit exit command because it would concatenate onto that text. Clear or submit the pending text, then retry 'relaunch'
+    error: relaunch of rl8cfe5c6a failed while stopping the old agent, which is still running; its original instructions were restored
+    sizes: brief.md=50755 launch-brief.md=52271 encoded-arg=52305(+1 NUL; limit 131072) history=absent
+    progress-note headings: brief=2 history=absent  earlier-notes-link-lines=0
+    journal: phase=failed:stopping note_token=0001086836.16154 
+    pane process: codex  codex pids in pane session: 1089785 
+    last status line: paused [at=1792410154]: This task was relaunched. Continue from here; the local copy and every
+=== [R2] fm-control.sh rl8cfe5c6a relaunch --note-file note2.txt (40001 bytes) rc=0 in 5s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=50842 launch-brief.md=52358 encoded-arg=52392(+1 NUL; limit 131072) history=40608
+    progress-note headings: brief=2 history=1  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 
+    pane process: codex  codex pids in pane session: 1115838 
+    last status line: paused [at=1792410183]: This task was relaunched. Continue from here; the local copy and every (earlier progress notes=1)
+=== [R3] fm-control.sh rl8cfe5c6a relaunch --note-file note3.txt (40001 bytes) rc=0 in 5s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=50842 launch-brief.md=52358 encoded-arg=52392(+1 NUL; limit 131072) history=81303
+    progress-note headings: brief=2 history=2  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 
+    pane process: codex  codex pids in pane session: 1131483 
+    last status line: paused [at=1792410202]: This task was relaunched. Continue from here; the local copy and every | earlier progress notes: 2
+=== [R4-refused] fm-control.sh rl8cfe5c6a relaunch --note-file note4.txt (40001 bytes) rc=1 in 1s
+    error: task rl8cfe5c6a's composer visibly holds pending text; refusing to type the /quit exit command because it would concatenate onto that text. Clear or submit the pending text, then retry 'relaunch'
+    error: relaunch of rl8cfe5c6a failed while stopping the old agent, which is still running; its original instructions were restored
+    sizes: brief.md=50842 launch-brief.md=52358 encoded-arg=52392(+1 NUL; limit 131072) history=81303
+    progress-note headings: brief=2 history=2  earlier-notes-link-lines=1
+    journal: phase=failed:stopping note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 
+    pane process: codex  codex pids in pane session: 1131483 
+    last status line: paused [at=1792410202]: This task was relaunched. Continue from here; the local copy and every | earlier progress notes: 2
+=== [R4] fm-control.sh rl8cfe5c6a relaunch --note-file note4.txt (40001 bytes) rc=0 in 5s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=50842 launch-brief.md=52358 encoded-arg=52392(+1 NUL; limit 131072) history=121998
+    progress-note headings: brief=2 history=3  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 note_token=0001147971.31214 
+    pane process: codex  codex pids in pane session: 1152743 
+    last status line: paused [at=1792410226]: This task was relaunched. Continue from here; the local copy and every | earlier progress notes=3
+=== [R5] fm-control.sh rl8cfe5c6a relaunch --note-file note5.txt (40001 bytes) rc=0 in 6s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=50842 launch-brief.md=52358 encoded-arg=52392(+1 NUL; limit 131072) history=162693
+    progress-note headings: brief=2 history=4  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 note_token=0001147971.31214 note_token=0001162425.31381 
+    pane process: codex  codex pids in pane session: 1166451 
+    last status line: paused [at=1792410244]: This task was relaunched. Continue from here; the local copy and every; earlier progress notes=4
+=== [R6] fm-control.sh rl8cfe5c6a relaunch --note-file note6.txt (40001 bytes) rc=0 in 4s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=50842 launch-brief.md=52358 encoded-arg=52392(+1 NUL; limit 131072) history=203388
+    progress-note headings: brief=2 history=5  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 note_token=0001147971.31214 note_token=0001162425.31381 note_token=0001168284.11226 
+    pane process: codex  codex pids in pane session: 1171211 
+    last status line: paused [at=1792410258]: This task was relaunched. Continue from here; the local copy and every uncommitted change are exactly as the previous worker left them. earlier progress notes=5
+=== [R7] fm-control.sh rl8cfe5c6a relaunch --note-file note7.txt (6001 bytes) rc=0 in 5s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=16842 launch-brief.md=18358 encoded-arg=18392(+1 NUL; limit 131072) history=244083
+    progress-note headings: brief=2 history=6  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 note_token=0001147971.31214 note_token=0001162425.31381 note_token=0001168284.11226 note_token=0001189461.04621 
+    pane process: codex  codex pids in pane session: 1195547 
+    last status line: paused [at=1792410291]: This task was relaunched. Continue from here; the local copy and every | earlier progress notes=6
+=== [R8] fm-control.sh rl8cfe5c6a relaunch --note-file note8.txt (6001 bytes) rc=0 in 6s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=16842 launch-brief.md=18358 encoded-arg=18392(+1 NUL; limit 131072) history=250778
+    progress-note headings: brief=2 history=7  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 note_token=0001147971.31214 note_token=0001162425.31381 note_token=0001168284.11226 note_token=0001189461.04621 note_token=0001206092.05802 
+    pane process: codex  codex pids in pane session: 1208530 
+    last status line: paused [at=1792410308]: This task was relaunched. Continue from here; the local copy and every | earlier progress notes=7
+=== [R9] fm-control.sh rl8cfe5c6a relaunch --note-file note9.txt (6001 bytes) rc=0 in 5s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=16842 launch-brief.md=18358 encoded-arg=18392(+1 NUL; limit 131072) history=257473
+    progress-note headings: brief=2 history=8  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 note_token=0001147971.31214 note_token=0001162425.31381 note_token=0001168284.11226 note_token=0001189461.04621 note_token=0001206092.05802 note_token=0001210250.15417 
+    pane process: codex  codex pids in pane session: 1213826 
+    last status line: paused [at=1792410322]: earlier progress notes=8; This task was relaunched. Continue from here; the local copy and every
+=== [R10] fm-control.sh rl8cfe5c6a relaunch --note-file note10.txt (6001 bytes) rc=0 in 5s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=16842 launch-brief.md=18358 encoded-arg=18392(+1 NUL; limit 131072) history=264168
+    progress-note headings: brief=2 history=9  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 note_token=0001147971.31214 note_token=0001162425.31381 note_token=0001168284.11226 note_token=0001189461.04621 note_token=0001206092.05802 note_token=0001210250.15417 note_token=0001217130.03662 
+    pane process: codex  codex pids in pane session: 1230996 
+    last status line: paused [at=1792410338]: This task was relaunched. Continue from here; the local copy and every (earlier_progress_notes=9)
+=== [R11] fm-control.sh rl8cfe5c6a relaunch --note-file note11.txt (6001 bytes) rc=0 in 6s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=16842 launch-brief.md=18358 encoded-arg=18392(+1 NUL; limit 131072) history=270863
+    progress-note headings: brief=2 history=10  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 note_token=0001147971.31214 note_token=0001162425.31381 note_token=0001168284.11226 note_token=0001189461.04621 note_token=0001206092.05802 note_token=0001210250.15417 note_token=0001217130.03662 note_token=0001237930.04224 
+    pane process: codex  codex pids in pane session: 1241405 
+    last status line: paused [at=1792410354]: This task was relaunched. Continue from here; the local copy and every (earlier progress notes: 10)
+=== [R12] fm-control.sh rl8cfe5c6a relaunch --note-file note12.txt (6001 bytes) rc=0 in 6s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=16842 launch-brief.md=18358 encoded-arg=18392(+1 NUL; limit 131072) history=277558
+    progress-note headings: brief=2 history=11  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 note_token=0001147971.31214 note_token=0001162425.31381 note_token=0001168284.11226 note_token=0001189461.04621 note_token=0001206092.05802 note_token=0001210250.15417 note_token=0001217130.03662 note_token=0001237930.04224 note_token=0001260013.24728 
+    pane process: codex  codex pids in pane session: 1263076 
+    last status line: paused [at=1792410368]: This task was relaunched. Continue from here; the local copy and every; earlier progress notes=11
+=== [R13] fm-control.sh rl8cfe5c6a relaunch --note-file note13.txt (6001 bytes) rc=0 in 4s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=16842 launch-brief.md=18358 encoded-arg=18392(+1 NUL; limit 131072) history=284253
+    progress-note headings: brief=2 history=12  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 note_token=0001147971.31214 note_token=0001162425.31381 note_token=0001168284.11226 note_token=0001189461.04621 note_token=0001206092.05802 note_token=0001210250.15417 note_token=0001217130.03662 note_token=0001237930.04224 note_token=0001260013.24728 note_token=0001265039.03395 
+    pane process: codex  codex pids in pane session: 1267402 
+    last status line: paused [at=1792410382]: earlier-progress-count=12; This task was relaunched. Continue from here; the local copy and every
+=== [R14] fm-control.sh rl8cfe5c6a relaunch --note-file note14.txt (6001 bytes) rc=0 in 6s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=16842 launch-brief.md=18358 encoded-arg=18392(+1 NUL; limit 131072) history=290948
+    progress-note headings: brief=2 history=13  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 note_token=0001147971.31214 note_token=0001162425.31381 note_token=0001168284.11226 note_token=0001189461.04621 note_token=0001206092.05802 note_token=0001210250.15417 note_token=0001217130.03662 note_token=0001237930.04224 note_token=0001260013.24728 note_token=0001265039.03395 note_token=0001268783.25639 
+    pane process: codex  codex pids in pane session: 1271630 
+    last status line: paused [at=1792410405]: This task was relaunched. Continue from here; the local copy and every | earlier progress notes: 13
+=== [R15] fm-control.sh rl8cfe5c6a relaunch --note-file note15.txt (6001 bytes) rc=0 in 5s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=16842 launch-brief.md=18358 encoded-arg=18392(+1 NUL; limit 131072) history=297643
+    progress-note headings: brief=2 history=14  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 note_token=0001147971.31214 note_token=0001162425.31381 note_token=0001168284.11226 note_token=0001189461.04621 note_token=0001206092.05802 note_token=0001210250.15417 note_token=0001217130.03662 note_token=0001237930.04224 note_token=0001260013.24728 note_token=0001265039.03395 note_token=0001268783.25639 note_token=0001290501.00931 
+    pane process: codex  codex pids in pane session: 1293461 
+    last status line: paused [at=1792410431]: This task was relaunched. Continue from here; the local copy and every | earlier progress notes: 14
+=== [R16] fm-control.sh rl8cfe5c6a relaunch --note-file note16.txt (6001 bytes) rc=0 in 5s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=16842 launch-brief.md=18358 encoded-arg=18392(+1 NUL; limit 131072) history=304338
+    progress-note headings: brief=2 history=15  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 note_token=0001147971.31214 note_token=0001162425.31381 note_token=0001168284.11226 note_token=0001189461.04621 note_token=0001206092.05802 note_token=0001210250.15417 note_token=0001217130.03662 note_token=0001237930.04224 note_token=0001260013.24728 note_token=0001265039.03395 note_token=0001268783.25639 note_token=0001290501.00931 note_token=0001303586.22602 
+    pane process: codex  codex pids in pane session: 1305980 
+    last status line: paused [at=1792410446]: This task was relaunched. Continue from here; the local copy and every | earlier progress notes=15
+=== [R17] fm-control.sh rl8cfe5c6a relaunch --note-file note17.txt (6001 bytes) rc=0 in 6s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=16842 launch-brief.md=18358 encoded-arg=18392(+1 NUL; limit 131072) history=311033
+    progress-note headings: brief=2 history=16  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 note_token=0001147971.31214 note_token=0001162425.31381 note_token=0001168284.11226 note_token=0001189461.04621 note_token=0001206092.05802 note_token=0001210250.15417 note_token=0001217130.03662 note_token=0001237930.04224 note_token=0001260013.24728 note_token=0001265039.03395 note_token=0001268783.25639 note_token=0001290501.00931 note_token=0001303586.22602 note_token=0001321080.07347 
+    pane process: codex  codex pids in pane session: 1323596 
+    last status line: paused [at=1792410462]: This task was relaunched. Continue from here; the local copy and every | earlier progress notes=16
+=== [R18] fm-control.sh rl8cfe5c6a relaunch --note-file note18.txt (6001 bytes) rc=0 in 5s
+    WARNING: watcher still down (same stale episode; last beat: never, grace 300s) - full banner already printed this episode.
+    relaunched rl8cfe5c6a harness=codex from=codex model=default effort=low backend=tmux endpoint=firstmate:fm-rl8cfe5c6a worktree=/tmp/fmrl.iZuRim/fixed/treehouse/.treehouse/notes-721104/1/notes
+    sizes: brief.md=16842 launch-brief.md=18358 encoded-arg=18392(+1 NUL; limit 131072) history=317728
+    progress-note headings: brief=2 history=17  earlier-notes-link-lines=1
+    journal: phase=complete note_token=0001086836.16154 note_token=0001110905.14520 note_token=0001121681.29990 note_token=0001147971.31214 note_token=0001162425.31381 note_token=0001168284.11226 note_token=0001189461.04621 note_token=0001206092.05802 note_token=0001210250.15417 note_token=0001217130.03662 note_token=0001237930.04224 note_token=0001260013.24728 note_token=0001265039.03395 note_token=0001268783.25639 note_token=0001290501.00931 note_token=0001303586.22602 note_token=0001321080.07347 note_token=0001328016.11722 
+    pane process: codex  codex pids in pane session: 1330085 
+    last status line: paused [at=1792410476]: This task was relaunched. Continue from here; the local copy and every (earlier progress notes: 17)
