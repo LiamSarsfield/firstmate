@@ -83,9 +83,12 @@
 #              inherits the local copy but none of the conversation; a
 #              secondmate reconciles its own home's records at startup, so its
 #              standing charter is never rewritten.
-#              Only the newest progress note stays in the brief; superseded
-#              sections, including those in existing briefs, are archived in
-#              data/<id>/progress-notes.md and linked from the new note.
+#              New progress notes run from `<!-- fm-relaunch-note:<token> -->`
+#              through `<!-- /fm-relaunch-note:<token> -->`; only complete
+#              bounded blocks are replaced and
+#              archived in data/<id>/progress-notes.md. Unmarked legacy text
+#              stays in place. The new note links to nonempty history, which
+#              is restored along with the brief when a relaunch is refused.
 #              Records a durable checkpoint and that note, exits the old agent,
 #              then delegates the launch to its single owner,
 #              bin/fm-spawn.sh --relaunch. A failure before publication keeps
@@ -790,7 +793,7 @@ do_exit() {
 # --- transactional relaunch -------------------------------------------------
 #
 # The transaction's durable record is state/<id>.control-relaunch, with the
-# prior metadata and brief preserved beside it. Every failure path runs through
+# prior metadata, brief, and changed history preserved beside it. Every failure path runs through
 # relaunch_rollback (an EXIT trap, so a refusal raised deep inside a shared
 # helper is covered too) and leaves either the pre-relaunch durable record or a
 # concrete, named partial state - never a task whose record claims an agent
@@ -804,6 +807,8 @@ RELAUNCH_META_PUBLISHED=0
 RELAUNCH_AGENT_CONFIRMED=0
 RELAUNCH_TX=
 RELAUNCH_BRIEF=
+RELAUNCH_HISTORY_UPDATED=0
+RELAUNCH_HISTORY_EXISTED=0
 PRIOR_HARNESS=$HARNESS
 PRIOR_RECORDED_HARNESS=$RECORDED_HARNESS
 CONFIG_HARNESS=
@@ -844,6 +849,15 @@ journal_write() {  # <phase> [extra-line]...
   return 1
 }
 
+relaunch_restore_history() {
+  [ "$RELAUNCH_HISTORY_UPDATED" = 1 ] || return 0
+  if [ "$RELAUNCH_HISTORY_EXISTED" = 1 ]; then
+    cp -p "$NOTE_FILE.history-prior" "$DATA/$ID/progress-notes.md" 2>/dev/null || true
+  else
+    rm -f "$DATA/$ID/progress-notes.md" 2>/dev/null || true
+  fi
+}
+
 relaunch_rollback() {
   local state
   [ "$RELAUNCH_ACTIVE" = 1 ] || return 0
@@ -856,6 +870,7 @@ relaunch_rollback() {
       if [ -n "$RELAUNCH_BRIEF" ] && [ -f "$BRIEF_PRIOR" ]; then
         cp -p "$BRIEF_PRIOR" "$RELAUNCH_BRIEF" 2>/dev/null || true
       fi
+      relaunch_restore_history
       journal_write "failed:$RELAUNCH_PHASE" "rollback=instructions-restored" || true
       echo "error: relaunch of $ID was refused before its agent was touched; nothing changed" >&2
       ;;
@@ -866,6 +881,7 @@ relaunch_rollback() {
           if [ -n "$RELAUNCH_BRIEF" ] && [ -f "$BRIEF_PRIOR" ]; then
             cp -p "$BRIEF_PRIOR" "$RELAUNCH_BRIEF" 2>/dev/null || true
           fi
+          relaunch_restore_history
           journal_write "failed:$RELAUNCH_PHASE" "rollback=instructions-restored-agent-alive" || true
           echo "error: relaunch of $ID failed while stopping the old agent, which is still running; its original instructions were restored" >&2
           ;;
@@ -882,6 +898,7 @@ relaunch_rollback() {
           if [ -n "$RELAUNCH_BRIEF" ] && [ -f "$BRIEF_PRIOR" ]; then
             cp -p "$BRIEF_PRIOR" "$RELAUNCH_BRIEF" 2>/dev/null || true
           fi
+          relaunch_restore_history
           journal_write "failed:$RELAUNCH_PHASE" "rollback=instructions-restored-agent-state-$state" || true
           echo "error: relaunch of $ID failed while stopping the old agent and its state is '$state', so it was not proven stopped; its original instructions were restored and the durable record was retained for recovery" >&2
           ;;
@@ -1087,7 +1104,7 @@ safe_checkpoint() {
 # never rewritten: a secondmate reconciles its own home's records at startup,
 # so the note stays parent-side audit evidence.
 record_note() {
-  local stamp inbox_q history heading next_brief
+  local stamp inbox_q history boundary pending last_byte
   [ -n "$NOTE" ] || return 0
   stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   printf '%s\n' "$NOTE" > "$NOTE_FILE"
@@ -1096,20 +1113,38 @@ record_note() {
       cp -p "$RELAUNCH_BRIEF" "$BRIEF_PRIOR" \
         || die "could not preserve task $ID's instructions before recording the progress note"
       history="$DATA/$ID/progress-notes.md"
-      heading='^## Progress note [(][0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z[)]$'
-      awk -v heading="$heading" '$0 ~ heading {notes=1} notes' "$BRIEF_PRIOR" >> "$history" \
-        || die "could not archive task $ID's earlier progress notes"
-      next_brief="$RELAUNCH_BRIEF.tmp"
-      cp -p "$BRIEF_PRIOR" "$next_brief" \
-        || die "could not stage task $ID's replacement instructions"
-      # Buffer blank lines so the separator before the note cannot accumulate.
-      awk -v heading="$heading" '
-        $0 ~ heading {exit}
-        NF {printf "%s", blank; blank=""; print; next}
-        {blank=blank $0 ORS}
-      ' "$BRIEF_PRIOR" > "$next_brief" \
-        || die "could not retain task $ID's original instructions"
+      if grep -q '^<!-- fm-relaunch-note:' "$BRIEF_PRIOR"; then
+        pending="$NOTE_FILE.history"
+        : > "$pending" || die "could not record task $ID's superseded notes"
+        # Only a matching pair owns a note; its body may contain any headings.
+        awk -v history="$pending" '
+          !note && /^<!-- fm-relaunch-note:[0-9]+[.][0-9]+ -->$/ {
+            note=1; end="<!-- /" substr($0, 6); block=$0 ORS; next
+          }
+          note {
+            block=block $0 ORS
+            if ($0 == end) {printf "%s", block >> history; note=0; block=""}
+            next
+          }
+          {print}
+          END {if (note) printf "%s", block}
+        ' "$BRIEF_PRIOR" > "$RELAUNCH_BRIEF" \
+          || die "could not retain task $ID's original instructions"
+        if [ -s "$pending" ]; then
+          if [ -f "$history" ]; then
+            cp -p "$history" "$NOTE_FILE.history-prior" \
+              || die "could not preserve task $ID's progress history"
+            RELAUNCH_HISTORY_EXISTED=1
+          fi
+          RELAUNCH_HISTORY_UPDATED=1
+          cat "$pending" >> "$history" || die "could not archive task $ID's earlier progress notes"
+        fi
+      fi
+      printf -v boundary '%010d.%05d' "${BASHPID:-$$}" "$RANDOM"
+      last_byte=$(tail -c 1 "$RELAUNCH_BRIEF")
       {
+        [ -z "$last_byte" ] || echo
+        printf '<!-- fm-relaunch-note:%s -->\n' "$boundary"
         echo
         echo "## Progress note ($stamp)"
         echo
@@ -1122,12 +1157,13 @@ record_note() {
         echo "each message in numeric order, then mv each handled file into"
         echo "'$inbox_q/handled/'. A steer sent before the relaunch survives there."
         echo
-        printf 'Earlier progress notes: %s\n\n' "$history"
+        if [ -s "$history" ]; then
+          printf 'Earlier progress notes: %s\n\n' "$history"
+        fi
         printf '%s\n' "$NOTE"
-      } >> "$next_brief" \
+        printf '<!-- /fm-relaunch-note:%s -->\n' "$boundary"
+      } >> "$RELAUNCH_BRIEF" \
         || die "could not append the progress note to task $ID's instructions"
-      mv -f "$next_brief" "$RELAUNCH_BRIEF" \
-        || die "could not publish task $ID's replacement instructions"
       ;;
   esac
 }

@@ -612,7 +612,7 @@ test_relaunch_appends_the_progress_note_to_the_instructions() {
 }
 
 test_relaunch_bounds_notes_and_preserves_legacy_history() {
-  local dir out rc brief history n size first_size=0
+  local dir out rc brief history n size first_size=0 original_size
   dir=$(new_case notehistory rl2c)
   add_ship_task "$dir" rl2c claude
   brief="$dir/home/data/rl2c/brief.md"
@@ -622,29 +622,129 @@ test_relaunch_bounds_notes_and_preserves_legacy_history() {
     printf '\n## Progress note (2026-10-19T08:00:00Z)\n\nLegacy note %s\n' "$n" >> "$brief"
     awk 'BEGIN {for (i=0; i<5600; i++) printf "x"; print ""}' >> "$brief"
   done
+  printf '\n\n' >> "$brief"
+  cp "$brief" "$dir/original.md"
+  original_size=$(wc -c < "$brief")
   for n in 1 2 3; do
     out=$(run_control "$dir" rl2c relaunch --note "Current note $n"$'\n## Next step\nContinue testing.'); rc=$?
     expect_code 0 "$rc" "repeated relaunch should succeed"$'\n'"$out"
-    [ "$(grep -c '^## Progress note ([0-9]' "$brief")" -eq 1 ] \
-      || fail "the brief must retain only the newest progress note, including on legacy tasks"
+    [ "$(grep -c '^## Progress note ([0-9]' "$brief")" -eq 19 ] \
+      || fail "the brief must keep legacy text and only the newest bounded progress note"
     assert_grep 'Exercise relaunch behavior for rl2c.' "$brief" "the original instructions must survive compaction"
     assert_grep 'Original example, not a relaunch section.' "$brief" "a similar original heading must survive compaction"
     assert_grep "Current note $n" "$dir/home/data/rl2c/launch-brief.md" "the newest note must reach the replacement"
     assert_grep '## Next step' "$brief" "a note may contain other Markdown sections"
+    head -c "$original_size" "$brief" | cmp -s - "$dir/original.md" \
+      || fail "original text and whitespace must stay byte-identical"
+    if [ "$n" -eq 1 ]; then
+      [ ! -e "$history" ] || fail "the first note must not create empty history"
+      ! grep -q 'Earlier progress notes:' "$brief" || fail "the first note must not link empty history"
+      continue
+    fi
     assert_grep "$history" "$brief" "the replacement must be able to find earlier notes"
     size=$(wc -c < "$brief")
-    if [ "$n" -eq 1 ]; then first_size=$size; fi
+    if [ "$n" -eq 2 ]; then first_size=$size; fi
     [ "$size" -eq "$first_size" ] || fail "equal-sized relaunch notes must not grow the brief"
   done
-  [ "$(grep -c '^## Progress note (' "$history")" -eq 20 ] \
-    || fail "all eighteen legacy notes and both superseded notes must be archived"
+  [ "$(grep -c '^## Progress note (' "$history")" -eq 2 ] \
+    || fail "only the two superseded bounded notes must be archived"
   for n in {1..18}; do
-    grep -qx "Legacy note $n" "$history" || fail "legacy note $n was lost"
+    grep -qx "Legacy note $n" "$brief" || fail "unmarked legacy note $n was moved"
   done
   assert_grep 'Current note 1' "$history" "the first replacement note must be archived"
   assert_grep 'Current note 2' "$history" "the second replacement note must be archived"
   ! grep -q 'Current note 3' "$history" || fail "the current note must remain in the brief"
-  pass "fm-control relaunch: repeated notes stay bounded and legacy history remains discoverable"
+  pass "fm-control relaunch: bounded notes rotate without changing unmarked text or whitespace"
+}
+
+test_relaunch_keeps_a_promoted_scout_contract_after_notes() {
+  local dir home id brief out rc file
+  id=rlpnote
+  dir=$(new_case promoted-note "$id")
+  home="$dir/home"
+  fm_git_worktree "$dir/proj" "$dir/wt" "task-$id"
+  FM_HOME="$home" "$BRIEF" "$id" firstmate --scout >/dev/null || fail "could not scaffold scout"
+  brief="$home/data/$id/brief.md"
+  sed 's/{TASK}/Fix the promotion relaunch contract./; s/{FIRSTMATE_SPEC}/Preserve the delivery mode./' \
+    "$brief" > "$dir/filled.md"
+  mv "$dir/filled.md" "$brief"
+  printf '\n## Progress note (2026-10-19T08:00:00Z)\n\nUnmarked legacy text.\n' >> "$brief"
+  {
+    printf 'window=fmses:fm-%s\nendpoint_task_id=%s\nworktree=%s\n' "$id" "$id" "$dir/wt"
+    printf 'project=%s\nharness=claude\nkind=scout\ntasktmp=/tmp/fm-%s\nmodel=default\neffort=default\n' "$dir/proj" "$id"
+  } > "$home/state/$id.meta"
+  TASK_TMPS+=("/tmp/fm-$id")
+  printf '%s\n' "fm-$id" > "$dir/fake/windows"
+  printf '%s' "$dir/wt" > "$dir/fake/cwd"
+  out=$(run_control "$dir" "$id" relaunch --note $'Scout result.\n# Handoff\nReady to implement.'); rc=$?
+  expect_code 0 "$rc" "scout relaunch should succeed"$'\n'"$out"
+  out=$(FM_ROOT_OVERRIDE="$ROOT" FM_HOME="$home" FM_STATE_OVERRIDE="$home/state" \
+    "$PROMOTE" "$id" --mode direct-PR --yolo off 2>&1); rc=$?
+  expect_code 0 "$rc" "promotion should succeed"$'\n'"$out"
+  out=$(run_control "$dir" "$id" relaunch --note "Continue the implementation."); rc=$?
+  expect_code 0 "$rc" "promoted task relaunch should succeed"$'\n'"$out"
+  for file in "$brief" "$home/data/$id/launch-brief.md"; do
+    assert_grep '# Current ship Firstmate spec' "$file" "the promotion specification must reach the replacement"
+    assert_grep 'Delivery contract: mode=direct-PR' "$file" "the promoted delivery contract must survive relaunch"
+    assert_grep 'Unmarked legacy text.' "$file" "unmarked legacy content must stay in the instructions"
+  done
+  ! grep -q '# Current ship Firstmate spec' "$home/data/$id/progress-notes.md" \
+    || fail "the promotion specification must never move to note history"
+  pass "fm-control relaunch: promotion contracts following notes stay in the brief and launch instructions"
+}
+
+test_relaunch_preserves_exact_note_headings_in_original_sections() {
+  local dir out rc section fenced excerpt brief
+  for section in intent spec; do
+    for fenced in yes no; do
+      dir=$(new_case "original-heading-$section-$fenced" rloh)
+      add_ship_task "$dir" rloh claude
+      brief="$dir/home/data/rloh/brief.md"
+      excerpt=$'## Progress note (2026-10-19T08:00:00Z)\nQuoted original content.'
+      if [ "$fenced" = yes ]; then excerpt=$'```\n'"$excerpt"$'\n```'; fi
+      {
+        printf '# Task\n## Captain\047s intent\nPreserve the original instructions.\n'
+        [ "$section" != intent ] || printf '%s\n' "$excerpt"
+        printf '\n## Firstmate spec\nSPEC-LINE-MUST-SURVIVE\n'
+        [ "$section" != spec ] || printf '%s\n' "$excerpt"
+        printf '\n# Rules\nRULES-LINE-MUST-SURVIVE\n'
+      } > "$brief"
+      cp "$brief" "$dir/original.md"
+      out=$(run_control "$dir" rloh relaunch --note "Continue."); rc=$?
+      expect_code 0 "$rc" "an exact original heading ($section, fenced=$fenced) must not cut instructions"$'\n'"$out"
+      head -c "$(wc -c < "$dir/original.md")" "$brief" | cmp -s - "$dir/original.md" \
+        || fail "the original $section content must stay byte-identical (fenced=$fenced)"
+      assert_grep 'SPEC-LINE-MUST-SURVIVE' "$brief" "the specification must survive"
+      assert_grep 'RULES-LINE-MUST-SURVIVE' "$brief" "the rules must survive"
+    done
+  done
+  pass "fm-control relaunch: exact note headings in original intent or specification never cut instructions"
+}
+
+test_refused_relaunch_preserves_history_without_retry_duplicates() {
+  local dir out rc brief history
+  dir=$(new_case note-rollback rlnr)
+  add_ship_task "$dir" rlnr claude
+  brief="$dir/home/data/rlnr/brief.md"
+  history="$dir/home/data/rlnr/progress-notes.md"
+  out=$(run_control "$dir" rlnr relaunch --note "History note A"); rc=$?
+  expect_code 0 "$rc" "first relaunch should succeed"$'\n'"$out"
+  out=$(run_control "$dir" rlnr relaunch --note "History note B"); rc=$?
+  expect_code 0 "$rc" "second relaunch should succeed"$'\n'"$out"
+  cp "$brief" "$dir/brief.before"
+  cp "$history" "$dir/history.before"
+  printf 'pending text' > "$dir/fake/composer"
+  out=$(run_control "$dir" rlnr relaunch --note "Refused note"); rc=$?
+  expect_code 1 "$rc" "pending composer text must refuse relaunch"$'\n'"$out"
+  cmp -s "$brief" "$dir/brief.before" || fail "a refused relaunch must restore the brief"
+  cmp -s "$history" "$dir/history.before" || fail "a refused relaunch must restore note history exactly"
+  : > "$dir/fake/composer"
+  out=$(run_control "$dir" rlnr relaunch --note "Successful retry"); rc=$?
+  expect_code 0 "$rc" "retry should succeed"$'\n'"$out"
+  [ "$(grep -c '^History note A$' "$history")" -eq 1 ] || fail "history note A must occur once"
+  [ "$(grep -c '^History note B$' "$history")" -eq 1 ] || fail "history note B must occur once"
+  ! grep -q 'Refused note' "$history" || fail "a refused note must not enter history"
+  pass "fm-control relaunch: refusal restores history and retry archives each note once"
 }
 
 test_relaunch_note_inbox_listing_is_safe_on_empty_inbox() {
@@ -2820,6 +2920,9 @@ test_relaunch_serializes_concurrent_durable_metadata_publication
 test_disabled_relaunch_clears_prior_trace_context
 test_relaunch_appends_the_progress_note_to_the_instructions
 test_relaunch_bounds_notes_and_preserves_legacy_history
+test_relaunch_keeps_a_promoted_scout_contract_after_notes
+test_relaunch_preserves_exact_note_headings_in_original_sections
+test_refused_relaunch_preserves_history_without_retry_duplicates
 test_relaunch_note_inbox_listing_is_safe_on_empty_inbox
 test_relaunch_requires_a_note_for_a_ship_task
 test_harness_switch_moves_the_record_and_clears_prior_wiring

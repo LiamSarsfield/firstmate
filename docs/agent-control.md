@@ -82,8 +82,11 @@ A relaunch does take one session reference when the endpoint's own runtime recor
    A secondmate's own crewmates run in their own endpoints and outlive its relaunch; the relaunched secondmate reconciles them from its home's durable records at startup.
 3. **Record the note.**
    A ship or scout relaunch requires `--note`, because the replacement inherits the local copy but none of the conversation.
-   Only the newest progress note remains in the instructions it reads; earlier sections, including accumulated notes in existing briefs, move to a linked history file so repeated relaunches do not grow the launch argument without bound.
-   The script header owns the archive path.
+   New notes have explicit matching comment boundaries; only complete bounded note blocks move to history when the next note replaces them, so headings inside a note never determine where it ends.
+   All other content stays in the brief, including promotion contracts following notes and unmarked legacy notes whose end cannot be identified safely.
+   A first note preserves the original text and whitespace without creating empty history or adding a history pointer.
+   Later notes include `Earlier progress notes:` followed by the nonempty history file's path.
+   The script header owns the boundary format and archive path.
    This does not limit the size of the original instructions or a single new note.
    A secondmate relaunch does not require one and never rewrites its standing charter.
 4. **Stop the old agent** through the `exit` verb, with its postcondition.
@@ -150,7 +153,7 @@ The worktree and the task's records are unaffected either way.
 
 ### Failure and rollback
 
-- A refusal **before** the agent is stopped leaves the durable record and the instructions byte-identical.
+- A refusal **before** the agent is stopped leaves the durable record, instructions, and progress history byte-identical, including preserving the absence of a history file.
 - A launch failure **after** the agent is stopped restores the prior durable record, keeps the progress note so a later recovery still has it, marks the journal `failed:launching`, and reports plainly that no agent is running and where the work is preserved.
 - If the launch owner already published the new record but no running agent can be confirmed, the new record is kept: the task is recorded on the new harness with no agent confirmed, which is exactly what recovery reconciles.
   Rewriting it back to the old harness would be a second, worse inaccuracy.
