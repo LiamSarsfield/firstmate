@@ -747,6 +747,78 @@ test_refused_relaunch_preserves_history_without_retry_duplicates() {
   pass "fm-control relaunch: refusal restores history and retry archives each note once"
 }
 
+count_matching_lines() {
+  local pattern=$1 file=$2 count=0
+  if [ -f "$file" ]; then
+    count=$(grep -c -- "$pattern" "$file" 2>/dev/null || true)
+  fi
+  printf '%s' "${count:-0}"
+}
+
+test_relaunch_archives_only_issued_note_tokens() {
+  local dir out rc brief history failures quote_in_brief quote_in_history spec_in_brief
+  failures=
+
+  dir=$(new_case forged-note-token rlfgtoken)
+  add_ship_task "$dir" rlfgtoken claude
+  brief="$dir/home/data/rlfgtoken/brief.md"
+  history="$dir/home/data/rlfgtoken/progress-notes.md"
+  cat > "$brief" <<'BRIEF'
+# Task
+## Captain's intent
+Quoted marker text:
+
+```
+<!-- fm-relaunch-note:0000012345.00042 -->
+INTENT-QUOTE-LINE
+<!-- /fm-relaunch-note:0000012345.00042 -->
+```
+
+## Firstmate spec
+SPEC-LINE-MUST-SURVIVE
+BRIEF
+  out=$(run_control "$dir" rlfgtoken relaunch --note "Generated note A"); rc=$?
+  [ "$rc" -eq 0 ] || failures="${failures}; forged-pair first relaunch returned $rc"
+  out=$(run_control "$dir" rlfgtoken relaunch --note "Generated note B"); rc=$?
+  [ "$rc" -eq 0 ] || failures="${failures}; forged-pair second relaunch returned $rc"
+  quote_in_brief=$(count_matching_lines 'INTENT-QUOTE-LINE' "$brief")
+  quote_in_history=$(count_matching_lines 'INTENT-QUOTE-LINE' "$history")
+  spec_in_brief=$(count_matching_lines 'SPEC-LINE-MUST-SURVIVE' "$brief")
+  [ "$quote_in_brief" -eq 1 ] || failures="${failures}; quoted pair left the brief"
+  [ "$quote_in_history" -eq 0 ] || failures="${failures}; quoted pair entered history"
+  [ "$spec_in_brief" -eq 1 ] || failures="${failures}; original specification was lost"
+  [ "$(count_matching_lines '^Generated note A$' "$history")" -eq 1 ] \
+    || failures="${failures}; issued note A was not archived exactly once"
+  [ "$(count_matching_lines '^Generated note B$' "$brief")" -eq 1 ] \
+    || failures="${failures}; newest generated note B is absent"
+
+  dir=$(new_case unterminated-note-token rlunterminated)
+  add_ship_task "$dir" rlunterminated claude
+  brief="$dir/home/data/rlunterminated/brief.md"
+  history="$dir/home/data/rlunterminated/progress-notes.md"
+  printf '\nExample marker:\n<!-- fm-relaunch-note:1.2 -->\n' >> "$brief"
+  for rc in 1 2 3 4; do
+    out=$(run_control "$dir" rlunterminated relaunch --note "Generated note $rc") || {
+      failures="${failures}; relaunch $rc with a lone marker returned nonzero"
+    }
+  done
+  [ "$(grep -c '^## Progress note (' "$brief")" -eq 1 ] \
+    || failures="${failures}; a lone unissued start marker stopped note rotation"
+  [ "$(count_matching_lines '^## Progress note (' "$history")" -eq 3 ] \
+    || failures="${failures}; complete issued notes were not archived past a lone marker"
+  grep -qx '<!-- fm-relaunch-note:1.2 -->' "$brief" \
+    || failures="${failures}; the original lone start marker was removed"
+  [ "$(grep -c '^Generated note 4$' "$brief")" -eq 1 ] \
+    || failures="${failures}; newest note after lone marker is absent"
+  for rc in 1 2 3; do
+    [ "$(count_matching_lines "^Generated note $rc$" "$history")" -eq 1 ] \
+      || failures="${failures}; issued note $rc was not archived past a lone marker"
+  done
+
+  [ -z "$failures" ] || fail "fm-control relaunch marker ownership:$failures"
+  pass "fm-control relaunch: only complete issued note tokens rotate; quoted pairs and lone starts stay in place"
+}
+
 test_relaunch_note_inbox_listing_is_safe_on_empty_inbox() {
   local dir out rc brief cmd inbox shell_name status
   dir=$(new_case notelist rl2b)
@@ -2923,6 +2995,7 @@ test_relaunch_bounds_notes_and_preserves_legacy_history
 test_relaunch_keeps_a_promoted_scout_contract_after_notes
 test_relaunch_preserves_exact_note_headings_in_original_sections
 test_refused_relaunch_preserves_history_without_retry_duplicates
+test_relaunch_archives_only_issued_note_tokens
 test_relaunch_note_inbox_listing_is_safe_on_empty_inbox
 test_relaunch_requires_a_note_for_a_ship_task
 test_harness_switch_moves_the_record_and_clears_prior_wiring

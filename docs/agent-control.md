@@ -66,7 +66,7 @@ A relaunch does take one session reference when the endpoint's own runtime recor
 
 ## Transactional relaunch
 
-`relaunch` is the only verb that changes durable records, so it runs as a transaction with a journal at `state/<id>.control-relaunch`, the prior record preserved beside it, and a ship or scout's prior instructions preserved when its progress note is updated.
+`relaunch` is the only verb that changes durable records, so it runs as a transaction with a journal at `state/<id>.control-relaunch`, the prior record and brief preserved beside it, and any changed progress history preserved for rollback.
 
 1. **Resolve the profile.**
    An explicit `--harness`, `--model`, or `--effort` wins.
@@ -82,11 +82,7 @@ A relaunch does take one session reference when the endpoint's own runtime recor
    A secondmate's own crewmates run in their own endpoints and outlive its relaunch; the relaunched secondmate reconciles them from its home's durable records at startup.
 3. **Record the note.**
    A ship or scout relaunch requires `--note`, because the replacement inherits the local copy but none of the conversation.
-   New notes have explicit matching comment boundaries; only complete bounded note blocks move to history when the next note replaces them, so headings inside a note never determine where it ends.
-   All other content stays in the brief, including promotion contracts following notes and unmarked legacy notes whose end cannot be identified safely.
-   A first note preserves the original text and whitespace without creating empty history or adding a history pointer.
-   Later notes include `Earlier progress notes:` followed by the nonempty history file's path.
-   The script header owns the boundary format and archive path.
+   The script header owns which progress notes move to history, how the replacement is written, and where the retained history lives.
    This does not limit the size of the original instructions or a single new note.
    A secondmate relaunch does not require one and never rewrites its standing charter.
 4. **Stop the old agent** through the `exit` verb, with its postcondition.
